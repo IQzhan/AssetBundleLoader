@@ -1,6 +1,5 @@
 ﻿/**
  *  Author ZhanQI
- *  Version 2.0
  */
 
 using System;
