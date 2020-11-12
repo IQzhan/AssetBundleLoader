@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc7d38d021a52c148af8182477bd260b, type: 3}
+  m_Name: AssetBundleBuildConfig
+  m_EditorClassIdentifier: 
+  buildTarget: 19
+  compressed: 0
+  outputFolder:
+    folderType: 3
+    custom: D:\Program Files\%PRODUCT_NAME%
+  readFunction:
+    folderType: 0
+    custom: 
+  rourceFolders:
+  - Example/Res
+  logCommon: 0
+  logError: 1
+  logWarning: 0

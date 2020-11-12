@@ -1,0 +1,9 @@
+/ProjectSettings/
+/Logs/
+/Library/
+/Temp/
+/obj/
+/Packages/
+/.vs/
+*.csproj
+*.sln
