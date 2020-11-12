@@ -51,6 +51,22 @@ namespace E
 #endif
         }
 
+        /// <summary>
+        /// Load all assets from asset bundle asynchronously in published project 
+        /// or just load these asset directly in editor without load any asset bundle
+        /// </summary>
+        /// <param name="path">Direct subpath of "Assets" folder like "Res/Prefabs",
+        /// each non empty folder is an asset bundle</param>
+        /// <param name="callback">Callback at the end</param>
+        public static void LoadAllAsset(string path, System.Action<UnityEngine.Object[]> callback)
+        {
+#if UNITY_EDITOR
+            LoadAllAssetInEditor(path, callback);
+#else
+            LoadAllAssetFromAssetBundle(path, callback);
+#endif
+        }
+
 #if UNITY_EDITOR
         private static void LoadAssetInEditor<T>(string path, System.Action<T> callback) where T : UnityEngine.Object
         {
@@ -77,6 +93,13 @@ namespace E
             }
             callback?.Invoke(asset);
         }
+
+        private static void LoadAllAssetInEditor(string path, System.Action<UnityEngine.Object[]> callback)
+        {
+            UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetRepresentationsAtPath(Path.Combine("Assets", path));
+            callback?.Invoke(assets);
+        }
+
 #endif
 
         private static void LoadAssetFromAssetBundle<T>(string path, System.Action<T> callback) where T : UnityEngine.Object
@@ -115,6 +138,19 @@ namespace E
                             "asset name: " + assetName);
                     }
                     callback?.Invoke(request.asset);
+                };
+            });
+        }
+
+        private static void LoadAllAssetFromAssetBundle(string path, System.Action<UnityEngine.Object[]> callback)
+        {
+            string bundleName = AssetBundlePath.FileToBundleName(path);
+            LoadAssetBundle(bundleName, (AssetBundle bundle) =>
+            {
+                AssetBundleRequest request = bundle.LoadAllAssetsAsync();
+                request.completed += (AsyncOperation operation) =>
+                {
+                    callback?.Invoke(request.allAssets);
                 };
             });
         }
