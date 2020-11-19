@@ -1,0 +1,6 @@
+<linker>
+    <assembly fullname="UnityEngine.CoreModule" preserve="all">
+    </assembly>
+    <assembly fullname="UnityEngine.AnimationModule" preserve="all">
+    </assembly>
+</linker>

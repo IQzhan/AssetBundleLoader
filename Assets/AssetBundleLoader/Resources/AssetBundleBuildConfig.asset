@@ -13,15 +13,15 @@ MonoBehaviour:
   m_Name: AssetBundleBuildConfig
   m_EditorClassIdentifier: 
   buildTarget: 19
-  compressed: 256
+  compressed: 0
   outputFolder:
     folderType: 3
-    custom: D:\Program Files\%PRODUCT_NAME%
-    subpath: 
+    custom: D:\Program Files\%COMPANY_NAME%\%PRODUCT_NAME%
+    subpath: Data
   readFunction:
     folderType: 0
     custom: 
-    subpath: 
+    subpath: Data
   rourceFolders:
   - Example/Res
   logCommon: 0
