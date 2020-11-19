@@ -716,38 +716,42 @@ namespace E
 
             private void LoadByWebRequest()
             {
-                string bundlePath = AssetBundlePath.BundleNameToBundlePath(name);
-                UnityWebRequest request = UnityWebRequestAssetBundle.GetAssetBundle(bundlePath);
-                webRequest = request;
-                request.SendWebRequest().completed += (AsyncOperation operation) =>
+                LoadingManifest.GetManifest((AssetBundleManifest manifest) => 
                 {
-                    if (request.isHttpError || request.isNetworkError)
+                    Hash128 version = manifest.GetAssetBundleHash(name);
+                    string bundlePath = AssetBundlePath.BundleNameToBundlePath(name);
+                    UnityWebRequest request = UnityWebRequestAssetBundle.GetAssetBundle(bundlePath, version);
+                    webRequest = request;
+                    request.SendWebRequest().completed += (AsyncOperation operation) =>
                     {
-                        AssetBundleLoaderDebug.LogError("AssetBundle loading faild:" + name + Environment.NewLine + 
-                            "url: " + request.url + Environment.NewLine +
-                            "response code: " + request.responseCode +
-                            request.error);
-                        DoCallbacks(null);
-                    }
-                    else
-                    {
-                        AssetBundle bundle = DownloadHandlerAssetBundle.GetContent(request);
-                        if (bundle != null)
+                        if (request.isHttpError || request.isNetworkError)
                         {
-                            AssetBundleLoaderDebug.Log("AssetBundle loading succeeded: " + name);
-                            DoCallbacks(bundle);
+                            AssetBundleLoaderDebug.LogError("AssetBundle loading faild:" + name + Environment.NewLine +
+                                "url: " + request.url + Environment.NewLine +
+                                "response code: " + request.responseCode +
+                                request.error);
+                            DoCallbacks(null);
                         }
                         else
                         {
-                            AssetBundleLoaderDebug.LogError("AssetBundle loading faild:" + name + Environment.NewLine +
-                                "url: " + bundlePath + Environment.NewLine +
-                                "DownloadHandlerAssetBundle.GetContent(request) return null" );
-                            DoCallbacks(null);
+                            AssetBundle bundle = DownloadHandlerAssetBundle.GetContent(request);
+                            if (bundle != null)
+                            {
+                                AssetBundleLoaderDebug.Log("AssetBundle loading succeeded: " + name);
+                                DoCallbacks(bundle);
+                            }
+                            else
+                            {
+                                AssetBundleLoaderDebug.LogError("AssetBundle loading faild:" + name + Environment.NewLine +
+                                    "url: " + bundlePath + Environment.NewLine +
+                                    "DownloadHandlerAssetBundle.GetContent(request) return null");
+                                DoCallbacks(null);
+                            }
                         }
-                    }
-                    request.Dispose();
-                    webRequest = null;
-                };
+                        request.Dispose();
+                        webRequest = null;
+                    };
+                });
             }
         }
     
