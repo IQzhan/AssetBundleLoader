@@ -99,19 +99,22 @@ namespace E
             [Tooltip("自定义路径")]
             public string custom;
 
+            [Tooltip("叠加子路径")]
+            public string subpath;
+
             public string GetPath(string folderName)
             {
                 switch (folderType)
                 {
                     default:
                     case PublishFolderType.Application:
-                        return Path.Combine(Environment.CurrentDirectory, "AssetBundles", folderName);
+                        return Path.Combine(Environment.CurrentDirectory, AssetBundleBuildConfigHelper.ConvertString(subpath), "AssetBundles", folderName);
                     case PublishFolderType.StreamingAssets:
-                        return Path.Combine(Application.streamingAssetsPath, "AssetBundles", folderName);
+                        return Path.Combine(Application.streamingAssetsPath, AssetBundleBuildConfigHelper.ConvertString(subpath), "AssetBundles", folderName);
                     case PublishFolderType.PersistentDataPath:
-                        return Path.Combine(Application.persistentDataPath, "AssetBundles", folderName);
+                        return Path.Combine(Application.persistentDataPath, AssetBundleBuildConfigHelper.ConvertString(subpath), "AssetBundles", folderName);
                     case PublishFolderType.Custom:
-                        return Path.Combine(AssetBundleBuildConfigHelper.ConvertString(custom), "AssetBundles", folderName);
+                        return Path.Combine(AssetBundleBuildConfigHelper.ConvertString(custom), AssetBundleBuildConfigHelper.ConvertString(subpath), "AssetBundles", folderName);
                 }
             }
         }
@@ -207,7 +210,7 @@ namespace E
             {
                 if (input != null)
                 {
-                    return input
+                    return input.Trim()
                     .Replace(CompanyName, Application.companyName)
                     .Replace(ProductName, Application.productName);
                 }
