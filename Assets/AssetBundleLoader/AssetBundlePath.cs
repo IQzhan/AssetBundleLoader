@@ -50,7 +50,7 @@ namespace E
         {
             return Path.Combine(
                     AssetBundleBuildConfig.Instance.GetDownloadURI(),
-                    AssetBundleBuildConfig.Instance.buildTarget.ToString());
+                    AssetBundleBuildConfig.Instance.GetBuildTargetName());
         }
 
         private static readonly Regex FormatReg0 = new Regex(@"\s+");

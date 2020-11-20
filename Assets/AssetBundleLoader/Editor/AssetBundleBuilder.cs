@@ -120,7 +120,7 @@ namespace E.Editor
 
         private static bool ResetAllAssetBundleNames()
         {
-            string[] folders = AssetBundleBuildConfig.Instance.GetRourceFolders();
+            string[] folders = AssetBundleBuildConfig.Instance.GetResourcesFolders();
             if(folders != null && folders.Length > 0)
             {
                 //遍历已经包含的文件
@@ -218,12 +218,12 @@ namespace E.Editor
                 bool exists = kv.Value;
                 if (!exists)
                 {
-                    DeleteUseless0(name, AssetBundleBuildConfig.Instance.buildTarget);
+                    DeleteUseless0(name);
                 }
             }
         }
 
-        private static void DeleteUseless0(string name, AssetBundleBuildConfig.BuildTarget buildTarget)
+        private static void DeleteUseless0(string name)
         {
             string pre = PrePath;
             string[] paths = new string[]
@@ -252,7 +252,7 @@ namespace E.Editor
             BuildPipeline.BuildAssetBundles(
             outputPathLocal,
             (BuildAssetBundleOptions)AssetBundleBuildConfig.Instance.compressed | BuildAssetBundleOptions.DeterministicAssetBundle,
-            (UnityEditor.BuildTarget)AssetBundleBuildConfig.Instance.buildTarget);
+            AssetBundleBuildConfig.Instance.buildTarget);
             Debug.Log("Asset bundle build complete");
         }
     }

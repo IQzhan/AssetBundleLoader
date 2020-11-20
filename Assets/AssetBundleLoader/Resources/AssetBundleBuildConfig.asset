@@ -14,16 +14,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   buildTarget: 19
   compressed: 0
-  outputFolder:
-    folderType: 3
+  outputPath:
+    pathType: 3
     custom: D:\Program Files\%COMPANY_NAME%\%PRODUCT_NAME%
     subpath: Data
-  readFunction:
-    folderType: 0
+  buildTargetName: StandaloneWindows64
+  readPath:
+    pathType: 0
     custom: 
     subpath: Data
-  rourceFolders:
-  - Example/Res
+  useWebRequest: 0
+  simulateInEditor: 1
+  resourceFolders:
+  - path: Example/Res
   logCommon: 0
   logError: 1
   logWarning: 0

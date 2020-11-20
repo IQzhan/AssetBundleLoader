@@ -31,22 +31,31 @@ namespace E
                 return instance;
             }
         }
-
+#if UNITY_EDITOR
         [Header("目标平台")]
         public BuildTarget buildTarget = BuildTarget.StandaloneWindows;
 
         [Header("压缩方式"), Tooltip("LZMA最小,LZ4稍大,None无压缩")]
         public Compressed compressed = Compressed.LZMA;
 
-        [Header("输出路径")]
-        public PublishFolder outputFolder;
+        [Header("输出路径"), SerializeField]
+        private PublishPath outputPath;
+#endif
+        [SerializeField, HideInInspector]
+        private string buildTargetName;
 
-        [Header("发布后的读取模式")]
-        public PublishFolder readFunction;
+        [Header("读取路径"), SerializeField]
+        private PublishPath readPath;
+
+        [Tooltip("使用WebRequest方式读取")]
+        public bool useWebRequest = false;
+#if UNITY_EDITOR
+        [Tooltip("在编辑器中模拟加载，但不是真正的加载assetbundle")]
+        public bool simulateInEditor = true;
 
         [Header("源文件相对路径"), Tooltip("Assets下的源文件夹相对路径")]
-        public string[] rourceFolders;
-
+        public List<ResourceFolder> resourceFolders = new List<ResourceFolder>();
+#endif
         [Header("控制台信息")]
         public bool logCommon = false;
 
@@ -57,12 +66,16 @@ namespace E
         public bool logWarning = false;
 
         /// <summary>
-        /// 获取打包路径
+        /// 获取目标平台名称
         /// </summary>
         /// <returns></returns>
-        public string GetTargetURI()
+        public string GetBuildTargetName()
         {
-            return outputFolder.GetPath(buildTarget.ToString());
+#if UNITY_EDITOR
+            return buildTargetName = buildTarget.ToString();
+#else
+            return buildTargetName;
+#endif
         }
 
         /// <summary>
@@ -71,30 +84,52 @@ namespace E
         /// <returns></returns>
         public string GetDownloadURI()
         {
-            return readFunction.GetPath(buildTarget.ToString());
+#if UNITY_EDITOR
+            return GetTargetURI();
+#else
+            return readPath.GetPath(GetBuildTargetName());
+#endif
+        }
+#if UNITY_EDITOR
+        /// <summary>
+        /// 获取打包路径
+        /// </summary>
+        /// <returns></returns>
+        public string GetTargetURI()
+        {
+            return outputPath.GetPath(GetBuildTargetName());
         }
 
         /// <summary>
         /// 获取源文件夹
         /// </summary>
         /// <returns></returns>
-        public string[] GetRourceFolders()
+        public string[] GetResourcesFolders()
         {
-            if(rourceFolders != null)
+            if(resourceFolders != null)
             {
-                for(int i = 0; i < rourceFolders.Length; i++)
+                string[] result = new string[resourceFolders.Count];
+                for(int i = 0; i < resourceFolders.Count; i++)
                 {
-                    rourceFolders[i] = AssetBundleBuildConfigHelper.ConvertString(rourceFolders[i]);
+                    result[i] = AssetBundleBuildConfigHelper.ConvertString(resourceFolders[i].path);
                 }
+                return result;
             }
-            return rourceFolders;
+            return null;
         }
 
+        public enum Compressed
+        {
+            None = 1,
+            LZMA = 0,
+            LZ4 = 256
+        }
+#endif
         [Serializable]
-        public class PublishFolder
+        public class PublishPath
         {
             [Tooltip("路径类型")]
-            public PublishFolderType folderType;
+            public PublishPathType pathType;
 
             [Tooltip("自定义路径")]
             public string custom;
@@ -104,22 +139,22 @@ namespace E
 
             public string GetPath(string folderName)
             {
-                switch (folderType)
+                switch (pathType)
                 {
                     default:
-                    case PublishFolderType.Application:
+                    case PublishPathType.Application:
                         return Path.Combine(Environment.CurrentDirectory, AssetBundleBuildConfigHelper.ConvertString(subpath), "AssetBundles", folderName);
-                    case PublishFolderType.StreamingAssets:
+                    case PublishPathType.StreamingAssets:
                         return Path.Combine(Application.streamingAssetsPath, AssetBundleBuildConfigHelper.ConvertString(subpath), "AssetBundles", folderName);
-                    case PublishFolderType.PersistentDataPath:
+                    case PublishPathType.PersistentDataPath:
                         return Path.Combine(Application.persistentDataPath, AssetBundleBuildConfigHelper.ConvertString(subpath), "AssetBundles", folderName);
-                    case PublishFolderType.Custom:
+                    case PublishPathType.Custom:
                         return Path.Combine(AssetBundleBuildConfigHelper.ConvertString(custom), AssetBundleBuildConfigHelper.ConvertString(subpath), "AssetBundles", folderName);
                 }
             }
         }
 
-        public enum PublishFolderType
+        public enum PublishPathType
         {
             Application,
             StreamingAssets,
@@ -127,77 +162,10 @@ namespace E
             Custom
         }
 
-        public enum Compressed
+        [Serializable]
+        public class ResourceFolder
         {
-            None = 1,
-            LZMA = 0,
-            LZ4 = 256
-        }
-
-        public enum BuildTarget
-        {
-            //
-            // 摘要:
-            //     Build a macOS standalone (Intel 64-bit).
-            StandaloneOSX = 2,
-            //
-            // 摘要:
-            //     Build a Windows standalone.
-            StandaloneWindows = 5,
-            //
-            // 摘要:
-            //     Build an iOS player.
-            iOS = 9,
-            //
-            // 摘要:
-            //     Build an Android .apk standalone app.
-            Android = 13,
-            //
-            // 摘要:
-            //     Build a Linux standalone.
-            StandaloneLinux = 17,
-            //
-            // 摘要:
-            //     Build a Windows 64-bit standalone.
-            StandaloneWindows64 = 19,
-            //
-            // 摘要:
-            //     WebGL.
-            WebGL = 20,
-            //
-            // 摘要:
-            //     Build an Windows Store Apps player.
-            WSAPlayer = 21,
-            //
-            // 摘要:
-            //     Build a Linux 64-bit standalone.
-            StandaloneLinux64 = 24,
-            //
-            // 摘要:
-            //     Build a PS4 Standalone.
-            PS4 = 31,
-            //
-            // 摘要:
-            //     Build a Xbox One Standalone.
-            XboxOne = 33,
-            //
-            // 摘要:
-            //     Build to Nintendo 3DS platform.
-            N3DS = 35,
-            WiiU = 36,
-            //
-            // 摘要:
-            //     Build to Apple's tvOS platform.
-            tvOS = 37,
-            //
-            // 摘要:
-            //     Build a Nintendo Switch player.
-            Switch = 38,
-            Lumin = 39,
-            //
-            // 摘要:
-            //     Build a Stadia standalone.
-            Stadia = 40
+            public string path;
         }
 
         private class AssetBundleBuildConfigHelper

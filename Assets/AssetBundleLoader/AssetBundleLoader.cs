@@ -28,7 +28,14 @@ namespace E
         public static void LoadAsset<T>(string path, System.Action<T> callback) where T : UnityEngine.Object
         {
 #if UNITY_EDITOR
-            LoadAssetInEditor(path, callback);
+            if (AssetBundleBuildConfig.Instance.simulateInEditor)
+            {
+                LoadAssetInEditor(path, callback);
+            }
+            else
+            {
+                LoadAssetFromAssetBundle(path, callback);
+            }
 #else
             LoadAssetFromAssetBundle(path, callback);
 #endif
@@ -44,7 +51,14 @@ namespace E
         public static void LoadAsset(string path, Type type, System.Action<UnityEngine.Object> callback)
         {
 #if UNITY_EDITOR
-            LoadAssetInEditor(path, type, callback);
+            if (AssetBundleBuildConfig.Instance.simulateInEditor)
+            {
+                LoadAssetInEditor(path, type, callback);
+            }
+            else
+            {
+                LoadAssetFromAssetBundle(path, type, callback);
+            }
 #else
             LoadAssetFromAssetBundle(path, type, callback);
 #endif
@@ -60,7 +74,14 @@ namespace E
         public static void LoadAllAsset(string path, System.Action<UnityEngine.Object[]> callback)
         {
 #if UNITY_EDITOR
-            LoadAllAssetInEditor(path, callback);
+            if (AssetBundleBuildConfig.Instance.simulateInEditor)
+            {
+                LoadAllAssetInEditor(path, callback);
+            }
+            else
+            {
+                LoadAllAssetFromAssetBundle(path, callback);
+            }
 #else
             LoadAllAssetFromAssetBundle(path, callback);
 #endif
@@ -164,7 +185,14 @@ namespace E
         public static void LoadScene(string path, System.Action<Scene> callback, LoadSceneMode loadSceneMode = LoadSceneMode.Additive)
         {
 #if UNITY_EDITOR
-            LoadSceneInEditor(path, callback, loadSceneMode);
+            if (AssetBundleBuildConfig.Instance.simulateInEditor)
+            {
+                LoadSceneInEditor(path, callback, loadSceneMode);
+            }
+            else
+            {
+                LoadSceneFromAssetBundle(path, callback, loadSceneMode);
+            }
 #else
             LoadSceneFromAssetBundle(path, callback, loadSceneMode);
 #endif
@@ -656,15 +684,14 @@ namespace E
 
             private void Load()
             {
-#if UNITY_EDITOR
-                LoadFromFile();
-#elif UNITY_STANDALONE || UNITY_PS4 || UNITY_XBOXONE
-                LoadFromFile();
-#elif UNITY_WEBGL || UNITY_ANDROID || UNITY_IOS
-                LoadByWebRequest();
-#else
-                LoadByWebRequest();
-#endif
+                if (AssetBundleBuildConfig.Instance.useWebRequest)
+                {
+                    LoadByWebRequest();
+                }
+                else
+                {
+                    LoadFromFile();
+                }
             }
 
             private void DoCallbacks(AssetBundle bundle)
@@ -788,15 +815,14 @@ namespace E
 
             private static void Load()
             {
-#if UNITY_EDITOR
-                LoadFromFile();
-#elif UNITY_STANDALONE || UNITY_PS4 || UNITY_XBOXONE
-                LoadFromFile();
-#elif UNITY_WEBGL || UNITY_ANDROID || UNITY_IOS
-                LoadByWebRequest();
-#else
-                LoadByWebRequest();
-#endif
+                if (AssetBundleBuildConfig.Instance.useWebRequest)
+                {
+                    LoadByWebRequest();
+                }
+                else
+                {
+                    LoadFromFile();
+                }
             }
 
             private static void LoadFromFile()
