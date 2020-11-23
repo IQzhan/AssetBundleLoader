@@ -71,19 +71,67 @@ namespace E
         /// <param name="path">Direct subpath of "Assets" folder like "Res/Prefabs",
         /// each non empty folder is an asset bundle</param>
         /// <param name="callback">Callback at the end</param>
-        public static void LoadAllAsset(string path, System.Action<UnityEngine.Object[]> callback)
+        public static void LoadAllAssets(string path, System.Action<UnityEngine.Object[]> callback)
         {
 #if UNITY_EDITOR
             if (AssetBundleSettings.Instance.simulateInEditor)
             {
-                LoadAllAssetInEditor(path, callback);
+                LoadAllAssetsInEditor(path, callback);
             }
             else
             {
-                LoadAllAssetFromAssetBundle(path, callback);
+                LoadAllAssetsFromAssetBundle(path, callback);
             }
 #else
-            LoadAllAssetFromAssetBundle(path, callback);
+            LoadAllAssetsFromAssetBundle(path, callback);
+#endif
+        }
+
+        /// <summary>
+        /// Load all assets from asset bundle asynchronously in published project 
+        /// or just load these asset directly in editor without load any asset bundle
+        /// </summary>
+        /// <param name="path">Direct subpath of "Assets" folder like "Res/Prefabs",
+        /// each non empty folder is an asset bundle</param>
+        /// <typeparam name="T">The type of this asset based on UnityEngine.Object</typeparam>
+        /// <param name="callback">Callback at the end</param>
+        public static void LoadAllAssets<T>(string path, System.Action<T[]> callback) where T : UnityEngine.Object
+        {
+#if UNITY_EDITOR
+            if (AssetBundleSettings.Instance.simulateInEditor)
+            {
+                LoadAllAssetsInEditor(path, callback);
+            }
+            else
+            {
+                LoadAllAssetsFromAssetBundle(path, callback);
+            }
+#else
+            LoadAllAssetsFromAssetBundle(path, callback);
+#endif
+        }
+
+        /// <summary>
+        /// Load all assets from asset bundle asynchronously in published project 
+        /// or just load these asset directly in editor without load any asset bundle
+        /// </summary>
+        /// <param name="path">Direct subpath of "Assets" folder like "Res/Prefabs",
+        /// each non empty folder is an asset bundle</param>
+        /// <param name="type">The type of this asset based on UnityEngine.Object</typeparam>
+        /// <param name="callback">Callback at the end</param>
+        public static void LoadAllAssets(string path, Type type, System.Action<UnityEngine.Object[]> callback)
+        {
+#if UNITY_EDITOR
+            if (AssetBundleSettings.Instance.simulateInEditor)
+            {
+                LoadAllAssetsInEditor(path, type, callback);
+            }
+            else
+            {
+                LoadAllAssetsFromAssetBundle(path, type, callback);
+            }
+#else
+            LoadAllAssetsFromAssetBundle(path, type, callback);
 #endif
         }
 
@@ -114,10 +162,20 @@ namespace E
             callback?.Invoke(asset);
         }
 
-        private static void LoadAllAssetInEditor(string path, System.Action<UnityEngine.Object[]> callback)
+        private static void LoadAllAssetsInEditor(string path, System.Action<UnityEngine.Object[]> callback)
         {
             UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetRepresentationsAtPath(Path.Combine("Assets", path));
             callback?.Invoke(assets);
+        }
+
+        private static void LoadAllAssetsInEditor<T>(string path, System.Action<T[]> callback) where T : UnityEngine.Object
+        {
+            //TODO
+        }
+
+        private static void LoadAllAssetsInEditor(string path, Type type,System.Action<UnityEngine.Object[]> callback)
+        {
+            //TODO
         }
 
 #endif
@@ -162,7 +220,7 @@ namespace E
             });
         }
 
-        private static void LoadAllAssetFromAssetBundle(string path, System.Action<UnityEngine.Object[]> callback)
+        private static void LoadAllAssetsFromAssetBundle(string path, System.Action<UnityEngine.Object[]> callback)
         {
             string bundleName = AssetBundlePath.FileToBundleName(path);
             LoadAssetBundle(bundleName, (AssetBundle bundle) =>
@@ -173,6 +231,16 @@ namespace E
                     callback?.Invoke(request.allAssets);
                 };
             });
+        }
+
+        private static void LoadAllAssetsFromAssetBundle<T>(string path, System.Action<T[]> callback) where T : UnityEngine.Object
+        {
+            //TODO
+        }
+
+        private static void LoadAllAssetsFromAssetBundle(string path, Type type, System.Action<UnityEngine.Object[]> callback)
+        {
+            //TODO
         }
 
         /// <summary>
