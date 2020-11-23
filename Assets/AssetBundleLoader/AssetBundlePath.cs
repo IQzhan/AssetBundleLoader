@@ -13,12 +13,12 @@ namespace E
 
         public static string FileToBundlePath(string filePath)
         {
-            return Path.Combine(AssetBundleBuildConfig.Instance.GetDownloadURI(), FileToBundleName(filePath));
+            return Path.Combine(AssetBundleSettings.Instance.GetDownloadURI(), FileToBundleName(filePath));
         }
 
         public static string BundleNameToBundlePath(string bundleName)
         {
-            return Path.Combine(AssetBundleBuildConfig.Instance.GetDownloadURI(), bundleName);
+            return Path.Combine(AssetBundleSettings.Instance.GetDownloadURI(), bundleName);
         }
 
         public static string FileToBundleName(string filePath)
@@ -49,8 +49,8 @@ namespace E
         public static string GetManifestPath()
         {
             return Path.Combine(
-                    AssetBundleBuildConfig.Instance.GetDownloadURI(),
-                    AssetBundleBuildConfig.Instance.GetBuildTargetName());
+                    AssetBundleSettings.Instance.GetDownloadURI(),
+                    AssetBundleSettings.Instance.GetBuildTargetName());
         }
 
         private static readonly Regex FormatReg0 = new Regex(@"\s+");

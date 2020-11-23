@@ -28,7 +28,7 @@ namespace E
         public static void LoadAsset<T>(string path, System.Action<T> callback) where T : UnityEngine.Object
         {
 #if UNITY_EDITOR
-            if (AssetBundleBuildConfig.Instance.simulateInEditor)
+            if (AssetBundleSettings.Instance.simulateInEditor)
             {
                 LoadAssetInEditor(path, callback);
             }
@@ -51,7 +51,7 @@ namespace E
         public static void LoadAsset(string path, Type type, System.Action<UnityEngine.Object> callback)
         {
 #if UNITY_EDITOR
-            if (AssetBundleBuildConfig.Instance.simulateInEditor)
+            if (AssetBundleSettings.Instance.simulateInEditor)
             {
                 LoadAssetInEditor(path, type, callback);
             }
@@ -74,7 +74,7 @@ namespace E
         public static void LoadAllAsset(string path, System.Action<UnityEngine.Object[]> callback)
         {
 #if UNITY_EDITOR
-            if (AssetBundleBuildConfig.Instance.simulateInEditor)
+            if (AssetBundleSettings.Instance.simulateInEditor)
             {
                 LoadAllAssetInEditor(path, callback);
             }
@@ -185,7 +185,7 @@ namespace E
         public static void LoadScene(string path, System.Action<Scene> callback, LoadSceneMode loadSceneMode = LoadSceneMode.Additive)
         {
 #if UNITY_EDITOR
-            if (AssetBundleBuildConfig.Instance.simulateInEditor)
+            if (AssetBundleSettings.Instance.simulateInEditor)
             {
                 LoadSceneInEditor(path, callback, loadSceneMode);
             }
@@ -684,7 +684,7 @@ namespace E
 
             private void Load()
             {
-                if (AssetBundleBuildConfig.Instance.useWebRequest)
+                if (AssetBundleSettings.Instance.useWebRequest)
                 {
                     LoadByWebRequest();
                 }
@@ -815,7 +815,7 @@ namespace E
 
             private static void Load()
             {
-                if (AssetBundleBuildConfig.Instance.useWebRequest)
+                if (AssetBundleSettings.Instance.useWebRequest)
                 {
                     LoadByWebRequest();
                 }

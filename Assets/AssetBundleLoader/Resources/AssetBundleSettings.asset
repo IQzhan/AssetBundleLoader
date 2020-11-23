@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dc7d38d021a52c148af8182477bd260b, type: 3}
-  m_Name: AssetBundleBuildConfig
+  m_Name: AssetBundleSettings
   m_EditorClassIdentifier: 
   buildTarget: 19
   compressed: 0
@@ -18,6 +18,8 @@ MonoBehaviour:
     pathType: 3
     custom: D:\Program Files\%COMPANY_NAME%\%PRODUCT_NAME%
     subpath: Data
+  resourceFolders:
+  - path: Example/Res
   buildTargetName: StandaloneWindows64
   readPath:
     pathType: 0
@@ -25,8 +27,6 @@ MonoBehaviour:
     subpath: Data
   useWebRequest: 0
   simulateInEditor: 1
-  resourceFolders:
-  - path: Example/Res
   logCommon: 0
   logError: 1
   logWarning: 0

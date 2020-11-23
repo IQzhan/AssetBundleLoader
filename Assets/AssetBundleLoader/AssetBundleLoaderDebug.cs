@@ -8,7 +8,7 @@ namespace E
     {
         public static void Log(string message)
         {
-            if (AssetBundleBuildConfig.Instance.logCommon)
+            if (AssetBundleSettings.Instance.logCommon)
             {
                 Debug.Log(message);
             }
@@ -16,7 +16,7 @@ namespace E
 
         public static void LogError(string message)
         {
-            if (AssetBundleBuildConfig.Instance.logError)
+            if (AssetBundleSettings.Instance.logError)
             {
                 Debug.LogError(message);
             }
@@ -24,7 +24,7 @@ namespace E
 
         public static void LogWarning(string message)
         {
-            if (AssetBundleBuildConfig.Instance.logWarning)
+            if (AssetBundleSettings.Instance.logWarning)
             {
                 Debug.LogWarning(message);
             }

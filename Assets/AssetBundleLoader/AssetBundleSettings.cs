@@ -8,13 +8,13 @@ using UnityEngine;
 namespace E
 {
     [Serializable]
-    public sealed class AssetBundleBuildConfig : ScriptableObject
+    public sealed class AssetBundleSettings : ScriptableObject
     {
         private static readonly object objLock = new object();
 
-        private static AssetBundleBuildConfig instance;
+        private static AssetBundleSettings instance;
 
-        public static AssetBundleBuildConfig Instance 
+        public static AssetBundleSettings Instance 
         {
             get
             {
@@ -24,7 +24,7 @@ namespace E
                     {
                         if(instance == null)
                         {
-                            instance = Resources.Load<AssetBundleBuildConfig>("AssetBundleBuildConfig");
+                            instance = Resources.Load<AssetBundleSettings>("AssetBundleSettings");
                         }
                     }
                 }
@@ -32,41 +32,33 @@ namespace E
             }
         }
 #if UNITY_EDITOR
-        [Header("目标平台")]
         public BuildTarget buildTarget = BuildTarget.StandaloneWindows;
 
-        [Header("压缩方式"), Tooltip("LZMA最小,LZ4稍大,None无压缩")]
         public Compressed compressed = Compressed.LZMA;
 
-        [Header("输出路径"), SerializeField]
+        [SerializeField]
         private PublishPath outputPath;
-#endif
-        [SerializeField, HideInInspector]
-        private string buildTargetName;
 
-        [Header("读取路径"), SerializeField]
-        private PublishPath readPath;
-
-        [Tooltip("使用WebRequest方式读取")]
-        public bool useWebRequest = false;
-#if UNITY_EDITOR
-        [Tooltip("在编辑器中模拟加载，但不是真正的加载assetbundle")]
-        public bool simulateInEditor = true;
-
-        [Header("源文件相对路径"), Tooltip("Assets下的源文件夹相对路径")]
         public List<ResourceFolder> resourceFolders = new List<ResourceFolder>();
 #endif
-        [Header("控制台信息")]
+        [SerializeField]
+        private string buildTargetName;
+
+        [SerializeField]
+        private PublishPath readPath;
+
+        public bool useWebRequest = false;
+#if UNITY_EDITOR
+        public bool simulateInEditor = true;
+#endif
         public bool logCommon = false;
 
-        [Header("控制台错误信息")]
         public bool logError = true;
 
-        [Header("控制台警告信息")]
         public bool logWarning = false;
 
         /// <summary>
-        /// 获取目标平台名称
+        /// Get target platform name
         /// </summary>
         /// <returns></returns>
         public string GetBuildTargetName()
@@ -79,7 +71,7 @@ namespace E
         }
 
         /// <summary>
-        /// 获取下载路径
+        /// Get download URI
         /// </summary>
         /// <returns></returns>
         public string GetDownloadURI()
@@ -92,7 +84,7 @@ namespace E
         }
 #if UNITY_EDITOR
         /// <summary>
-        /// 获取打包路径
+        /// Get build target URI
         /// </summary>
         /// <returns></returns>
         public string GetTargetURI()
@@ -101,7 +93,7 @@ namespace E
         }
 
         /// <summary>
-        /// 获取源文件夹
+        /// Get source folders
         /// </summary>
         /// <returns></returns>
         public string[] GetResourcesFolders()
@@ -128,13 +120,10 @@ namespace E
         [Serializable]
         public class PublishPath
         {
-            [Tooltip("路径类型")]
             public PublishPathType pathType;
 
-            [Tooltip("自定义路径")]
             public string custom;
 
-            [Tooltip("叠加子路径")]
             public string subpath;
 
             public string GetPath(string folderName)

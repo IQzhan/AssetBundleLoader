@@ -114,13 +114,13 @@ namespace E.Editor
         {
             get
             {
-                return AssetBundleBuildConfig.Instance.GetTargetURI();
+                return AssetBundleSettings.Instance.GetTargetURI();
             }
         }
 
         private static bool ResetAllAssetBundleNames()
         {
-            string[] folders = AssetBundleBuildConfig.Instance.GetResourcesFolders();
+            string[] folders = AssetBundleSettings.Instance.GetResourcesFolders();
             if(folders != null && folders.Length > 0)
             {
                 //遍历已经包含的文件
@@ -155,13 +155,13 @@ namespace E.Editor
                         }
                         else
                         {
-                            Debug.LogError("AssetBundleBuildConfig: folder does not exist! " + folder0);
+                            Debug.LogError("AssetBundleSettings: folder does not exist! " + folder0);
                             return false;
                         }
                     }
                     else
                     {
-                        Debug.LogError("AssetBundleBuildConfig: source folder setting cannot be empty");
+                        Debug.LogError("AssetBundleSettings: source folder setting cannot be empty");
                         return false;
                     }
                 }
@@ -251,8 +251,8 @@ namespace E.Editor
             }
             BuildPipeline.BuildAssetBundles(
             outputPathLocal,
-            (BuildAssetBundleOptions)AssetBundleBuildConfig.Instance.compressed | BuildAssetBundleOptions.DeterministicAssetBundle,
-            AssetBundleBuildConfig.Instance.buildTarget);
+            (BuildAssetBundleOptions)AssetBundleSettings.Instance.compressed | BuildAssetBundleOptions.DeterministicAssetBundle,
+            AssetBundleSettings.Instance.buildTarget);
             Debug.Log("Asset bundle build complete");
         }
     }
