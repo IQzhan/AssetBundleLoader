@@ -10,6 +10,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
+using System.Text.RegularExpressions;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -164,20 +165,41 @@ namespace E
 
         private static void LoadAllAssetsInEditor(string path, System.Action<UnityEngine.Object[]> callback)
         {
-            UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetRepresentationsAtPath(Path.Combine("Assets", path));
-            callback?.Invoke(assets);
+            LoadAllAssetsInEditor(path, typeof(UnityEngine.Object), callback);
         }
 
         private static void LoadAllAssetsInEditor<T>(string path, System.Action<T[]> callback) where T : UnityEngine.Object
         {
-            //TODO
+            LoadAllAssetsInEditor(path, typeof(T), (UnityEngine.Object[] oris)=> 
+            {
+                List<T> assets = new List<T>(oris.Length);
+                foreach(UnityEngine.Object ori in oris)
+                {
+                    assets.Add(ori as T);
+                }
+                callback?.Invoke(assets.ToArray());
+            });
         }
 
-        private static void LoadAllAssetsInEditor(string path, Type type,System.Action<UnityEngine.Object[]> callback)
+        private static readonly Regex UnityEditorNameSpaceRegex = new Regex(@"^(?:UnityEditor)(?:\s*\..*){0,1}");
+
+        private static void LoadAllAssetsInEditor(string path, Type type, System.Action<UnityEngine.Object[]> callback)
         {
-            //TODO
+            string name = type.Name;
+            string[] GUIDs = AssetDatabase.FindAssets("t:" + name, new string[] { Path.Combine("Assets", path) });
+            List<UnityEngine.Object> assets = new List<UnityEngine.Object>(GUIDs.Length);
+            foreach(string GUID in GUIDs)
+            {
+                string assetPath = AssetDatabase.GUIDToAssetPath(GUID);
+                Type assetType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
+                if(!UnityEditorNameSpaceRegex.IsMatch(assetType.Namespace))
+                {
+                    UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath(assetPath, type);
+                    assets.Add(asset);
+                }
+            }
+            callback?.Invoke(assets.ToArray());
         }
-
 #endif
 
         private static void LoadAssetFromAssetBundle<T>(string path, System.Action<T> callback) where T : UnityEngine.Object

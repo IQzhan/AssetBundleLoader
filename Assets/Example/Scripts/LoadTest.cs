@@ -27,6 +27,14 @@ public class LoadTest : MonoBehaviour
                 });
             }
         }, LoadSceneMode.Additive);
+
+        AssetBundleLoader.LoadAllAssets("Example/Res", (UnityEngine.Object[] assets) =>
+        {
+            for (int i = 0; i < assets.Length; i++)
+            {
+                Debug.Log(assets[i]);
+            }
+        });
     }
 
     private void Update()

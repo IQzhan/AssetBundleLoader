@@ -137,6 +137,7 @@ namespace E.Editor
                             string[] paths = Directory.GetFiles(folder0, "*", SearchOption.AllDirectories);
                             foreach (string path in paths)
                             {
+                                //TODO 改用 AssetDatabase
                                 FileInfo fileInfo = new FileInfo(path);
                                 if (ExcludeExtend(fileInfo.Name))
                                 {
