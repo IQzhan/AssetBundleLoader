@@ -146,35 +146,6 @@ namespace E.Editor
                                 }
                             }
                         }
-
-                        //string folder0 = Path.Combine(Application.dataPath, folder);
-                        //if (Directory.Exists(folder0))
-                        //{
-                        //    //Reset assetBundleName
-                        //    string[] paths = Directory.GetFiles(folder0, "*", SearchOption.AllDirectories);
-                        //    foreach (string path in paths)
-                        //    {
-                        //        FileInfo fileInfo = new FileInfo(path);
-                        //        if (ExcludeExtend(fileInfo.Name))
-                        //        {
-                        //            string resoourceDirPath = fileInfo.DirectoryName.Remove(0, Application.dataPath.Length + 1);
-                        //            string resoourceFilePath0 = fileInfo.FullName.Remove(0, Application.dataPath.Length + 1);
-                        //            string resoourceFilePath = Path.Combine("Assets", resoourceFilePath0);
-                        //            string bundleName = AssetBundlePath.FormatPath(resoourceDirPath) + AssetBundlePath.Extension;
-                        //            //includedName[bundleName] = true;
-                        //            AssetImporter assetImporter = AssetImporter.GetAtPath(resoourceFilePath);
-                        //            if (!assetImporter.assetBundleName.Equals(bundleName))
-                        //            {
-                        //                assetImporter.assetBundleName = bundleName;
-                        //            }
-                        //        }
-                        //    }
-                        //}
-                        //else
-                        //{
-                        //    Debug.LogError("AssetBundleSettings: folder does not exist! " + folder0);
-                        //    return false;
-                        //}
                     }
                     else
                     {
