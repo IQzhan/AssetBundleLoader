@@ -73,6 +73,7 @@ namespace E.Editor
             public void Draw()
             {
                 EditorGUILayout.BeginVertical("HelpBox");
+                EditorGUILayout.BeginVertical("HelpBox");
                 //Build Target
                 EditorGUI.BeginChangeCheck();
                 asset.buildTarget = (BuildTarget)EditorGUILayout.EnumPopup(new GUIContent("Build Target", "目标平台"), asset.buildTarget);
@@ -133,6 +134,7 @@ namespace E.Editor
                 asset.logError = EditorGUILayout.Toggle(new GUIContent("Error", "打印控制台错误信息"), asset.logError);
                 asset.logWarning = EditorGUILayout.Toggle(new GUIContent("Warning", "打印控制台警告信息"), asset.logWarning);
                 EditorGUI.indentLevel--;
+                EditorGUILayout.EndVertical();
                 EditorGUILayout.EndVertical();
             }
         }

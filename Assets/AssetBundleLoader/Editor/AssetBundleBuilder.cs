@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
@@ -123,42 +124,57 @@ namespace E.Editor
             string[] folders = AssetBundleSettings.Instance.GetResourcesFolders();
             if(folders != null && folders.Length > 0)
             {
-                //遍历已经包含的文件
                 Dictionary<string, bool> includedName = new Dictionary<string, bool>();
                 StripFilesName(includedName);
+                Regex UnityEditorNameSpaceRegex = new Regex(@"^(?:UnityEditor)(?:\s*\..*){0,1}");
                 foreach (string folder in folders)
                 {
                     if (!string.IsNullOrWhiteSpace(folder))
                     {
-                        string folder0 = Path.Combine(Application.dataPath, folder);
-                        if (Directory.Exists(folder0))
+                        string[] GUIDs = AssetDatabase.FindAssets("t:Object", new string[] { Path.Combine("Assets", folder) });
+                        foreach (string GUID in GUIDs)
                         {
-                            //Reset assetBundleName
-                            string[] paths = Directory.GetFiles(folder0, "*", SearchOption.AllDirectories);
-                            foreach (string path in paths)
+                            string assetPath = AssetDatabase.GUIDToAssetPath(GUID);
+                            Type assetType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
+                            if (!UnityEditorNameSpaceRegex.IsMatch(assetType.Namespace) || assetType.Name == "SceneAsset")
                             {
-                                //TODO 改用 AssetDatabase
-                                FileInfo fileInfo = new FileInfo(path);
-                                if (ExcludeExtend(fileInfo.Name))
+                                AssetImporter assetImporter = AssetImporter.GetAtPath(assetPath);
+                                string bundleName = AssetBundlePath.FileToBundleName(assetPath.Remove(0, "Assets/".Length));
+                                if (!assetImporter.assetBundleName.Equals(bundleName))
                                 {
-                                    string resoourceDirPath = fileInfo.DirectoryName.Remove(0, Application.dataPath.Length + 1);
-                                    string resoourceFilePath0 = fileInfo.FullName.Remove(0, Application.dataPath.Length + 1);
-                                    string resoourceFilePath = Path.Combine("Assets", resoourceFilePath0);
-                                    string bundleName = AssetBundlePath.FormatPath(resoourceDirPath) + AssetBundlePath.Extension;
-                                    //includedName[bundleName] = true;
-                                    AssetImporter assetImporter = AssetImporter.GetAtPath(resoourceFilePath);
-                                    if (!assetImporter.assetBundleName.Equals(bundleName))
-                                    {
-                                        assetImporter.assetBundleName = bundleName;
-                                    }
+                                    assetImporter.assetBundleName = bundleName;
                                 }
                             }
                         }
-                        else
-                        {
-                            Debug.LogError("AssetBundleSettings: folder does not exist! " + folder0);
-                            return false;
-                        }
+
+                        //string folder0 = Path.Combine(Application.dataPath, folder);
+                        //if (Directory.Exists(folder0))
+                        //{
+                        //    //Reset assetBundleName
+                        //    string[] paths = Directory.GetFiles(folder0, "*", SearchOption.AllDirectories);
+                        //    foreach (string path in paths)
+                        //    {
+                        //        FileInfo fileInfo = new FileInfo(path);
+                        //        if (ExcludeExtend(fileInfo.Name))
+                        //        {
+                        //            string resoourceDirPath = fileInfo.DirectoryName.Remove(0, Application.dataPath.Length + 1);
+                        //            string resoourceFilePath0 = fileInfo.FullName.Remove(0, Application.dataPath.Length + 1);
+                        //            string resoourceFilePath = Path.Combine("Assets", resoourceFilePath0);
+                        //            string bundleName = AssetBundlePath.FormatPath(resoourceDirPath) + AssetBundlePath.Extension;
+                        //            //includedName[bundleName] = true;
+                        //            AssetImporter assetImporter = AssetImporter.GetAtPath(resoourceFilePath);
+                        //            if (!assetImporter.assetBundleName.Equals(bundleName))
+                        //            {
+                        //                assetImporter.assetBundleName = bundleName;
+                        //            }
+                        //        }
+                        //    }
+                        //}
+                        //else
+                        //{
+                        //    Debug.LogError("AssetBundleSettings: folder does not exist! " + folder0);
+                        //    return false;
+                        //}
                     }
                     else
                     {
@@ -187,7 +203,7 @@ namespace E.Editor
 
         private static bool ExcludeExtend(string name)
         {
-            foreach(string exd in excludeExtends)
+            foreach (string exd in excludeExtends)
             {
                 if (name.EndsWith(exd))
                 {

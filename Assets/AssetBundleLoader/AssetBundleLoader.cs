@@ -23,6 +23,28 @@ namespace E
         /// Load an asset from asset bundle asynchronously in published project 
         /// or just load this asset directly in editor without load any asset bundle
         /// </summary>
+        /// <param name="path">Direct subpath of "Assets" folder like "Res/Prefabs/Player.prefab"</param>
+        /// <param name="callback">Callback at the end, null parameter if loading faild</param>
+        public static void LoadAsset(string path, System.Action<UnityEngine.Object> callback)
+        {
+#if UNITY_EDITOR
+            if (AssetBundleSettings.Instance.simulateInEditor)
+            {
+                LoadAssetInEditor(path, callback);
+            }
+            else
+            {
+                LoadAssetFromAssetBundle(path, callback);
+            }
+#else
+            LoadAssetFromAssetBundle(path, callback);
+#endif
+        }
+
+        /// <summary>
+        /// Load an asset from asset bundle asynchronously in published project 
+        /// or just load this asset directly in editor without load any asset bundle
+        /// </summary>
         /// <typeparam name="T">The type of this asset based on UnityEngine.Object</typeparam>
         /// <param name="path">Direct subpath of "Assets" folder like "Res/Prefabs/Player.prefab"</param>
         /// <param name="callback">Callback at the end, null parameter if loading faild</param>
@@ -137,20 +159,22 @@ namespace E
         }
 
 #if UNITY_EDITOR
+        private static void LoadAssetInEditor(string path, System.Action<UnityEngine.Object> callback)
+        {
+            LoadAssetInEditor<UnityEngine.Object>(path, typeof(UnityEngine.Object), callback);
+        }
+
         private static void LoadAssetInEditor<T>(string path, System.Action<T> callback) where T : UnityEngine.Object
         {
-            T asset = AssetDatabase.LoadAssetAtPath<T>(Path.Combine("Assets", path));
-            if (asset == null)
-            {
-                string assetName = AssetBundlePath.FileToAssetName(path);
-                AssetBundleLoaderDebug.LogError("Asset loading faild in editor" + Environment.NewLine +
-                    "path: " + path + Environment.NewLine +
-                    "asset name: " + assetName);
-            }
-            callback?.Invoke(asset);
+            LoadAssetInEditor(path, typeof(T), callback);
         }
 
         private static void LoadAssetInEditor(string path, Type type, System.Action<UnityEngine.Object> callback)
+        {
+            LoadAssetInEditor<UnityEngine.Object>(path, type, callback);
+        }
+
+        private static void LoadAssetInEditor<T>(string path, Type type, System.Action<T> callback) where T : UnityEngine.Object
         {
             UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath(Path.Combine("Assets", path), type);
             if (asset == null)
@@ -160,109 +184,125 @@ namespace E
                     "path: " + path + Environment.NewLine +
                     "asset name: " + assetName);
             }
-            callback?.Invoke(asset);
+            callback?.Invoke(asset as T);
         }
 
         private static void LoadAllAssetsInEditor(string path, System.Action<UnityEngine.Object[]> callback)
         {
-            LoadAllAssetsInEditor(path, typeof(UnityEngine.Object), callback);
+            LoadAllAssetsInEditor<UnityEngine.Object>(path, typeof(UnityEngine.Object), callback);
         }
 
         private static void LoadAllAssetsInEditor<T>(string path, System.Action<T[]> callback) where T : UnityEngine.Object
         {
-            LoadAllAssetsInEditor(path, typeof(T), (UnityEngine.Object[] oris)=> 
-            {
-                List<T> assets = new List<T>(oris.Length);
-                foreach(UnityEngine.Object ori in oris)
-                {
-                    assets.Add(ori as T);
-                }
-                callback?.Invoke(assets.ToArray());
-            });
+            LoadAllAssetsInEditor(path, typeof(T), callback);
+        }
+
+        private static void LoadAllAssetsInEditor(string path, Type type, System.Action<UnityEngine.Object[]> callback)
+        {
+            LoadAllAssetsInEditor<UnityEngine.Object>(path, type, callback);
         }
 
         private static readonly Regex UnityEditorNameSpaceRegex = new Regex(@"^(?:UnityEditor)(?:\s*\..*){0,1}");
 
-        private static void LoadAllAssetsInEditor(string path, Type type, System.Action<UnityEngine.Object[]> callback)
+        private static void LoadAllAssetsInEditor<T>(string path, Type type, System.Action<T[]> callback) where T : UnityEngine.Object
         {
             string name = type.Name;
             string[] GUIDs = AssetDatabase.FindAssets("t:" + name, new string[] { Path.Combine("Assets", path) });
-            List<UnityEngine.Object> assets = new List<UnityEngine.Object>(GUIDs.Length);
-            foreach(string GUID in GUIDs)
+            List<T> assets = new List<T>(GUIDs.Length);
+            foreach (string GUID in GUIDs)
             {
                 string assetPath = AssetDatabase.GUIDToAssetPath(GUID);
                 Type assetType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
-                if(!UnityEditorNameSpaceRegex.IsMatch(assetType.Namespace))
+                if (!UnityEditorNameSpaceRegex.IsMatch(assetType.Namespace))
                 {
-                    UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath(assetPath, type);
+                    T asset = AssetDatabase.LoadAssetAtPath(assetPath, type) as T;
                     assets.Add(asset);
                 }
             }
             callback?.Invoke(assets.ToArray());
         }
 #endif
+        private static void LoadAssetFromAssetBundle(string path, System.Action<UnityEngine.Object> callback)
+        {
+            LoadAssetFromAssetBundle<UnityEngine.Object>(path, typeof(UnityEngine.Object), callback);
+        }
 
         private static void LoadAssetFromAssetBundle<T>(string path, System.Action<T> callback) where T : UnityEngine.Object
         {
-            string bundleName = AssetBundlePath.FileToBundleName(path);
-            LoadAssetBundle(bundleName, (AssetBundle bundle) =>
-            {
-                string assetName = AssetBundlePath.FileToAssetName(path);
-                AssetBundleRequest request = bundle.LoadAssetAsync<T>(assetName);
-                request.completed += (AsyncOperation operation) => 
-                {
-                    if (request.asset == null)
-                    {
-                        AssetBundleLoaderDebug.LogError("Asset loading faild in bundle" + Environment.NewLine +
-                            "bundle name: " + bundleName + Environment.NewLine +
-                            "asset name: " + assetName);
-                    }
-                    callback?.Invoke(request.asset as T);
-                };
-            });
+            LoadAssetFromAssetBundle(path, typeof(T), callback);
         }
 
         private static void LoadAssetFromAssetBundle(string path, Type type, System.Action<UnityEngine.Object> callback)
         {
+            LoadAssetFromAssetBundle<UnityEngine.Object>(path, type, callback);
+        }
+
+        private static void LoadAssetFromAssetBundle<T>(string path, Type type, System.Action<T> callback) where T : UnityEngine.Object
+        {
             string bundleName = AssetBundlePath.FileToBundleName(path);
             LoadAssetBundle(bundleName, (AssetBundle bundle) =>
             {
-                string assetName = AssetBundlePath.FileToAssetName(path);
-                AssetBundleRequest request = bundle.LoadAssetAsync(assetName, type);
-                request.completed += (AsyncOperation operation) =>
+                if (bundle != null)
                 {
-                    if (request.asset == null)
+                    string assetName = AssetBundlePath.FileToAssetName(path);
+                    AssetBundleRequest request = bundle.LoadAssetAsync(assetName, type);
+                    request.completed += (AsyncOperation operation) =>
                     {
-                        AssetBundleLoaderDebug.LogError("Asset loading faild in bundle" + Environment.NewLine +
-                            "bundle name: " + bundleName + Environment.NewLine +
-                            "asset name: " + assetName);
-                    }
-                    callback?.Invoke(request.asset);
-                };
+                        if (request.asset == null)
+                        {
+                            AssetBundleLoaderDebug.LogError("Asset loading faild in bundle" + Environment.NewLine +
+                                "bundle name: " + bundleName + Environment.NewLine +
+                                "asset name: " + assetName);
+                        }
+                        callback?.Invoke(request.asset as T);
+                    };
+                }
+                else
+                {
+                    callback?.Invoke(null);
+                }
             });
         }
 
         private static void LoadAllAssetsFromAssetBundle(string path, System.Action<UnityEngine.Object[]> callback)
         {
-            string bundleName = AssetBundlePath.FileToBundleName(path);
-            LoadAssetBundle(bundleName, (AssetBundle bundle) =>
-            {
-                AssetBundleRequest request = bundle.LoadAllAssetsAsync();
-                request.completed += (AsyncOperation operation) =>
-                {
-                    callback?.Invoke(request.allAssets);
-                };
-            });
+            LoadAllAssetsFromAssetBundle<UnityEngine.Object>(path, typeof(UnityEngine.Object), callback);
         }
 
         private static void LoadAllAssetsFromAssetBundle<T>(string path, System.Action<T[]> callback) where T : UnityEngine.Object
         {
-            //TODO
+            LoadAllAssetsFromAssetBundle(path, typeof(UnityEngine.Object), callback);
         }
 
         private static void LoadAllAssetsFromAssetBundle(string path, Type type, System.Action<UnityEngine.Object[]> callback)
         {
-            //TODO
+            LoadAllAssetsFromAssetBundle<UnityEngine.Object>(path, type, callback);
+        }
+
+        private static void LoadAllAssetsFromAssetBundle<T>(string path, Type type, System.Action<T[]> callback) where T : UnityEngine.Object
+        {
+            string bundleName = AssetBundlePath.DirectoryToBundleName(path);
+            LoadAssetBundle(bundleName, (AssetBundle bundle) =>
+            {
+                if (bundle != null)
+                {
+                    AssetBundleRequest request = bundle.LoadAllAssetsAsync(type);
+                    request.completed += (AsyncOperation operation) =>
+                    {
+                        UnityEngine.Object[] allAssets = request.allAssets;
+                        T[] assets = new T[allAssets.Length];
+                        for (int i = 0; i < allAssets.Length; i++)
+                        {
+                            assets[i] = allAssets[i] as T;
+                        }
+                        callback?.Invoke(assets);
+                    };
+                }
+                else
+                {
+                    callback?.Invoke(new T[0]);
+                }
+            });
         }
 
         /// <summary>
@@ -788,22 +828,11 @@ namespace E
             {
                 lock (this)
                 {
-                    if(bundle != null)
-                    {
-                        loading = false;
-                        assetBundle = bundle;
-                        System.Action<AssetBundle> backup = callbacks;
-                        callbacks = null;
-                        backup?.Invoke(bundle);
-                    }
-                    else
-                    {
-                        loading = false;
-                        assetBundle = bundle;
-                        System.Action<AssetBundle> backup = callbacks;
-                        callbacks = null;
-                        backup?.Invoke(null);
-                    }
+                    loading = false;
+                    assetBundle = bundle;
+                    System.Action<AssetBundle> backup = callbacks;
+                    callbacks = null;
+                    backup?.Invoke(bundle);
                 }
             }
 
