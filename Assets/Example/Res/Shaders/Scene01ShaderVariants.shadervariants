@@ -18,8 +18,6 @@ ShaderVariantCollection:
       variants:
       - keywords: BILLBOARD_FACE_CAMERA_POS DIRLIGHTMAP_COMBINED LIGHTMAP_ON UNITY_HDR_ON
         passType: 4
-      - keywords: BILLBOARD_FACE_CAMERA_POS LIGHTPROBE_SH UNITY_HDR_ON
-        passType: 4
       - keywords: BILLBOARD_FACE_CAMERA_POS DIRLIGHTMAP_COMBINED LIGHTMAP_ON UNITY_HDR_ON
           _EMISSION
         passType: 4
@@ -74,3 +72,8 @@ ShaderVariantCollection:
         passType: 0
       - keywords: BILLBOARD_FACE_CAMERA_POS UNITY_HDR_ON
         passType: 0
+  - first: {fileID: -4850512016903265157, guid: 00000000000000000000000000000000, type: 0}
+    second:
+      variants:
+      - keywords: SHADOWS_DEPTH
+        passType: 8

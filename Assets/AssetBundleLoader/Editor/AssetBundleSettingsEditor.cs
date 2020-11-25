@@ -70,6 +70,7 @@ namespace E.Editor
                 if (resourceFoldersList == null)
                 {
                     List<AssetBundleSettings.ResourceFolder> resourceFolders = asset.resourceFolders;
+                    int selIndex = 0;
                     resourceFoldersList = new ReorderableList(resourceFolders, typeof(AssetBundleSettings.ResourceFolder), true, true, true, true)
                     {
                         drawHeaderCallback = (rect) =>
@@ -77,7 +78,7 @@ namespace E.Editor
                         drawElementCallback = (rect, index, isActive, isFocused) =>
                         {
                             AssetBundleSettings.ResourceFolder resourceFolder = resourceFolders[index];
-                            if (isActive)
+                            if (selIndex == index)
                             {
                                 resourceFolder.path = EditorGUI.TextField(rect, resourceFolder.path);
                             }
@@ -85,6 +86,17 @@ namespace E.Editor
                             {
                                 EditorGUI.LabelField(rect, resourceFolder.path);
                             }
+                        },
+                        onSelectCallback = (ReorderableList list) => 
+                        {
+                            if(selIndex == -1)
+                            {
+                                selIndex = list.index;
+                            }
+                            else if(selIndex != list.index)
+                            {
+                                selIndex = -1;
+                            }                         
                         }
                     };
                 }
