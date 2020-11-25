@@ -38,24 +38,15 @@ namespace E.Editor
                 foreach(string guid in selectedGUIDs)
                 {
                     string path = AssetDatabase.GUIDToAssetPath(guid);
-                    if (Directory.Exists(path))
+                    AssetImporter.GetAtPath(path).assetBundleName = null;
+                    if (AssetDatabase.IsValidFolder(path))
                     {
-                        string[] filePaths = Directory.GetFiles(Path.Combine(Environment.CurrentDirectory, path), "*", SearchOption.AllDirectories);
-                        foreach(string filePath in filePaths)
+                        string[] GUIDs = AssetDatabase.FindAssets("t:Object", new string[] { path });
+                        foreach (string GUID in GUIDs)
                         {
-                            FileInfo fileInfo = new FileInfo(filePath);
-                            if (!fileInfo.Name.EndsWith(".meta"))
-                            {
-                                string resoourceFilePath = fileInfo.FullName.Remove(0, Environment.CurrentDirectory.Length + 1);
-                                AssetImporter assetImporter = AssetImporter.GetAtPath(resoourceFilePath);
-                                assetImporter.assetBundleName = null;
-                            }
+                            string assetPath = AssetDatabase.GUIDToAssetPath(GUID);
+                            AssetImporter.GetAtPath(assetPath).assetBundleName = null;
                         }
-                    }
-                    else
-                    {
-                        AssetImporter assetImporter = AssetImporter.GetAtPath(path);
-                        assetImporter.assetBundleName = null;
                     }
                     Debug.Log("Clear asset bundle names " + path);
                 }
@@ -71,88 +62,42 @@ namespace E.Editor
         public static void ResetSeletedBundleNames()
         {
             string[] selectedGUIDs = Selection.assetGUIDs;
-            if (selectedGUIDs.Length > 0)
+            foreach (string guid in selectedGUIDs)
             {
-                foreach (string guid in selectedGUIDs)
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (AssetDatabase.IsValidFolder(path))
                 {
-                    string path = AssetDatabase.GUIDToAssetPath(guid);
-                    if (Directory.Exists(path))
-                    {
-                        string[] filePaths = Directory.GetFiles(Path.Combine(Environment.CurrentDirectory, path), "*", SearchOption.AllDirectories);
-                        foreach (string filePath in filePaths)
-                        {
-                            FileInfo fileInfo = new FileInfo(filePath);
-                            if (ExcludeExtend(fileInfo.Name))
-                            {
-                                string resoourceFilePath = fileInfo.FullName.Remove(0, Environment.CurrentDirectory.Length + 1);
-                                AssetImporter assetImporter = AssetImporter.GetAtPath(resoourceFilePath);
-                                string bundleName = AssetBundlePath.FileToBundleName(resoourceFilePath.Remove(0, "Assets/".Length));
-                                if (!assetImporter.assetBundleName.Equals(bundleName))
-                                {
-                                    assetImporter.assetBundleName = bundleName;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        string resoourceFilePath = path;
-                        AssetImporter assetImporter = AssetImporter.GetAtPath(resoourceFilePath);
-                        string bundleName = AssetBundlePath.FileToBundleName(resoourceFilePath.Remove(0, "Assets/".Length));
-                        if (!assetImporter.assetBundleName.Equals(bundleName))
-                        {
-                            assetImporter.assetBundleName = bundleName;
-                        }
-                    }
-                    Debug.Log("Reset asset bundle names " + path);
+                    AssetImporter.GetAtPath(path).assetBundleName = null;
+                    ResetBundleNames(new string[] { path });
                 }
+                else
+                {
+                    ResetBundleName(path);
+                }
+                Debug.Log("Reset asset bundle names " + path);
             }
             AssetDatabase.RemoveUnusedAssetBundleNames();
             Debug.Log("Reset asset bundle names complete");
         }
 
-        private static string PrePath
-        {
-            get
-            {
-                return AssetBundleSettings.Instance.GetTargetURI();
-            }
-        }
-
         private static bool ResetAllAssetBundleNames()
         {
             string[] folders = AssetBundleSettings.Instance.GetResourcesFolders();
-            if(folders != null && folders.Length > 0)
+            if(folders.Length > 0)
             {
-                Dictionary<string, bool> includedName = new Dictionary<string, bool>();
-                StripFilesName(includedName);
-                Regex UnityEditorNameSpaceRegex = new Regex(@"^(?:UnityEditor)(?:\s*\..*){0,1}");
-                foreach (string folder in folders)
+                string[] folders0 = new string[folders.Length];
+                for(int i = 0; i < folders.Length; i++)
                 {
-                    if (!string.IsNullOrWhiteSpace(folder))
-                    {
-                        string[] GUIDs = AssetDatabase.FindAssets("t:Object", new string[] { Path.Combine("Assets", folder) });
-                        foreach (string GUID in GUIDs)
-                        {
-                            string assetPath = AssetDatabase.GUIDToAssetPath(GUID);
-                            Type assetType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
-                            if (!UnityEditorNameSpaceRegex.IsMatch(assetType.Namespace) || assetType.Name == "SceneAsset")
-                            {
-                                AssetImporter assetImporter = AssetImporter.GetAtPath(assetPath);
-                                string bundleName = AssetBundlePath.FileToBundleName(assetPath.Remove(0, "Assets/".Length));
-                                if (!assetImporter.assetBundleName.Equals(bundleName))
-                                {
-                                    assetImporter.assetBundleName = bundleName;
-                                }
-                            }
-                        }
-                    }
-                    else
+                    if (string.IsNullOrWhiteSpace(folders[i]))
                     {
                         Debug.LogError("AssetBundleSettings: source folder setting cannot be empty");
                         return false;
                     }
+                    folders0[i] = Path.Combine("Assets", folders[i]);
                 }
+                Dictionary<string, bool> includedName = new Dictionary<string, bool>();
+                StripFilesName(includedName);
+                ResetBundleNames(folders0);
                 AssetDatabase.RemoveUnusedAssetBundleNames();
                 string[] allBundleNames = AssetDatabase.GetAllAssetBundleNames();
                 foreach(string eachName in allBundleNames)
@@ -168,25 +113,44 @@ namespace E.Editor
             return true;
         }
 
-        private static readonly string[] excludeExtends = {
-            ".meta", ".cs", "LightingData.asset"
-        };
+        private static readonly Regex ResourcesRegex = new Regex(@"(?:.+[\\/]){0,1}Resources(?:[\\/].+){0,1}");
+        private static readonly Regex EditorRegex = new Regex(@"(?:.+[\\/]){0,1}Editor(?:[\\/].+){0,1}");
+        private static readonly Regex UnityEditorNameSpaceRegex = new Regex(@"^(?:UnityEditor)(?:\s*\..*){0,1}");
 
-        private static bool ExcludeExtend(string name)
+        private static void ResetBundleNames(string[] folders)
         {
-            foreach (string exd in excludeExtends)
+            string[] GUIDs = AssetDatabase.FindAssets("t:Object", folders);
+            foreach (string GUID in GUIDs)
             {
-                if (name.EndsWith(exd))
+                string assetPath = AssetDatabase.GUIDToAssetPath(GUID);
+                ResetBundleName(assetPath);
+            }
+        }
+
+        private static void ResetBundleName(string assetPath)
+        {
+            Type assetType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
+            AssetImporter assetImporter = AssetImporter.GetAtPath(assetPath);
+            if (!ResourcesRegex.IsMatch(assetPath) &&
+                !EditorRegex.IsMatch(assetPath) &&
+                (!UnityEditorNameSpaceRegex.IsMatch(assetType.Namespace) ||
+                assetType.FullName.Equals("UnityEditor.SceneAsset")))
+            {
+                string bundleName = AssetBundlePath.FileToBundleName(assetPath.Remove(0, "Assets/".Length));
+                if (!assetImporter.assetBundleName.Equals(bundleName))
                 {
-                    return false;
+                    assetImporter.assetBundleName = bundleName;
                 }
             }
-            return true;
+            else
+            {
+                assetImporter.assetBundleName = null;
+            }
         }
 
         private static void StripFilesName(Dictionary<string, bool> includedName)
         {
-            string oldPathPre = PrePath;
+            string oldPathPre = AssetBundleSettings.Instance.GetTargetURI();
             if (Directory.Exists(oldPathPre))
             {
                 string[] oldPaths = Directory.GetFiles(oldPathPre, "*" + AssetBundlePath.Extension);
@@ -206,39 +170,38 @@ namespace E.Editor
                 bool exists = kv.Value;
                 if (!exists)
                 {
-                    DeleteUseless0(name);
+                    DeleteFile(name);
                 }
             }
-        }
-
-        private static void DeleteUseless0(string name)
-        {
-            string pre = PrePath;
-            string[] paths = new string[]
+            void DeleteFile(string name)
             {
+                string pre = AssetBundleSettings.Instance.GetTargetURI();
+                string[] paths = new string[]
+                {
                 Path.Combine(pre, name),
                 Path.Combine(pre, name + ".manifest"),
                 Path.Combine(pre, name + ".meta"),
                 Path.Combine(pre, name, ".manifest.meta"),
-            };
-            foreach (string path in paths)
-            {
-                if (File.Exists(path))
+                };
+                foreach (string path in paths)
                 {
-                    File.Delete(path);
+                    if (File.Exists(path))
+                    {
+                        File.Delete(path);
+                    }
                 }
             }
         }
 
         private static void BuildAssetBundles()
         {
-            string outputPathLocal = PrePath;
-            if (!Directory.Exists(outputPathLocal))
+            string outputPath = AssetBundleSettings.Instance.GetTargetURI();
+            if (!Directory.Exists(outputPath))
             {
-                Directory.CreateDirectory(outputPathLocal);
+                Directory.CreateDirectory(outputPath);
             }
             BuildPipeline.BuildAssetBundles(
-            outputPathLocal,
+            outputPath,
             (BuildAssetBundleOptions)AssetBundleSettings.Instance.compressed | BuildAssetBundleOptions.DeterministicAssetBundle,
             AssetBundleSettings.Instance.buildTarget);
             Debug.Log("Asset bundle build complete");

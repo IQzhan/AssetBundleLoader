@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
@@ -32,17 +33,17 @@ namespace E
             }
         }
 #if UNITY_EDITOR
-        public BuildTarget buildTarget = BuildTarget.StandaloneWindows;
+        public BuildTarget buildTarget = BuildTarget.StandaloneWindows64;
 
         public Compressed compressed = Compressed.LZMA;
 
         [SerializeField]
-        private PublishPath outputPath;
+        private string outputPath = "%APPLICATION_PATH%/Output/Windows/%PRODUCT_NAME%/Data";
 
         public List<ResourceFolder> resourceFolders = new List<ResourceFolder>();
 #endif
         [SerializeField]
-        private string buildTargetName;
+        private string buildTargetName = "StandaloneWindows64";
 
         [SerializeField]
         private PublishPath readPath;
@@ -83,13 +84,15 @@ namespace E
 #endif
         }
 #if UNITY_EDITOR
+        //private static readonly Regex PathRegex = new Regex(@"^(?:\s*[a-zA-Z]\s*:\s*(?:[\\/](?:\s*[\S-[\/|<>?*:""]]+)+)*(?:\s[\\/]\s*){0,1})&");
+
         /// <summary>
         /// Get build target URI
         /// </summary>
         /// <returns></returns>
         public string GetTargetURI()
         {
-            return outputPath.GetPath(GetBuildTargetName());
+            return Path.Combine(AssetBundleBuildConfigHelper.ConvertString(outputPath), "AssetBundles", GetBuildTargetName());
         }
 
         /// <summary>
@@ -107,7 +110,7 @@ namespace E
                 }
                 return result;
             }
-            return null;
+            return new string[0];
         }
 
         public enum Compressed
@@ -120,11 +123,11 @@ namespace E
         [Serializable]
         public class PublishPath
         {
-            public PublishPathType pathType;
+            public PublishPathType pathType = PublishPathType.Application;
 
-            public string custom;
+            public string custom = "%APPLICATION_PATH%/Output/Windows/%PRODUCT_NAME%";
 
-            public string subpath;
+            public string subpath = "Data";
 
             public string GetPath(string folderName)
             {
@@ -154,22 +157,30 @@ namespace E
         [Serializable]
         public class ResourceFolder
         {
-            public string path;
+            public string path = string.Empty;
         }
 
         private class AssetBundleBuildConfigHelper
         {
+#if UNITY_EDITOR
+            private const string ApplicationPath = "%APPLICATION_PATH%";
+#endif
             private const string CompanyName = "%COMPANY_NAME%";
 
             private const string ProductName = "%PRODUCT_NAME%";
+
+            private static readonly Regex reg0 = new Regex(@"[\\/]&");
 
             public static string ConvertString(string input)
             {
                 if (input != null)
                 {
-                    return input.Trim()
-                    .Replace(CompanyName, Application.companyName)
-                    .Replace(ProductName, Application.productName);
+                    return reg0.Replace(input.Trim()
+#if UNITY_EDITOR
+                        .Replace(ApplicationPath, Environment.CurrentDirectory)
+#endif
+                        .Replace(CompanyName, Application.companyName)
+                        .Replace(ProductName, Application.productName), string.Empty);
                 }
                 return input;
             }

@@ -255,17 +255,6 @@ namespace E
                                 "bundle name: " + bundleName + Environment.NewLine +
                                 "asset name: " + assetName);
                         }
-                        else
-                        {
-                            //if(asset is GameObject)
-                            //{
-                            //    AssetBundleTool.RecoverShader(asset as GameObject);
-                            //}
-                            //else if(asset is Material)
-                            //{
-                            //    AssetBundleTool.RecoverShader(asset as Material);
-                            //}
-                        }
                         callback?.Invoke(asset);
                     };
                 }
@@ -306,14 +295,6 @@ namespace E
                         for (int i = 0; i < allAssets.Length; i++)
                         {
                             assets[i] = allAssets[i] as T;
-                            //if(assets[i] is GameObject)
-                            //{
-                            //    AssetBundleTool.RecoverShader(assets[i] as GameObject);
-                            //}
-                            //else if(assets[i] is Material)
-                            //{
-                            //    AssetBundleTool.RecoverShader(assets[i] as Material);
-                            //}
                         }
                         callback?.Invoke(assets);
                     };
@@ -449,7 +430,6 @@ namespace E
                 {
                     AssetBundleLoaderDebug.Log("Scene loading succeeded " + sceneName);
                     SceneManager.SetActiveScene(scene);
-                    //AssetBundleTool.RecoverShader();
                     callback?.Invoke(scene);
                 }
                 else

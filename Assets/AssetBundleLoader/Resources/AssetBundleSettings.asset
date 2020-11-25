@@ -14,16 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   buildTarget: 19
   compressed: 0
-  outputPath:
-    pathType: 3
-    custom: D:\Program Files\%COMPANY_NAME%\%PRODUCT_NAME%
-    subpath: Data
+  outputPath: '%APPLICATION_PATH%/Output/Windows/%PRODUCT_NAME%/Data'
   resourceFolders:
   - path: Example/Res
   buildTargetName: StandaloneWindows64
   readPath:
     pathType: 0
-    custom: 
+    custom: '%APPLICATION_PATH%/Output/Windows/%PRODUCT_NAME%'
     subpath: Data
   useWebRequest: 0
   simulateInEditor: 1

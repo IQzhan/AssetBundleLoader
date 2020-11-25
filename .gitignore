@@ -8,3 +8,4 @@
 *.csproj
 *.sln
 /UserSettings/
+/Output/

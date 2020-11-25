@@ -33,9 +33,29 @@ namespace E.Editor
             private AssetBundleSettings asset;
             private Type assetType;
             private ReorderableList resourceFoldersList;
-            private readonly string help =
+            private readonly string help0 =
+                "Use %APPLICATION_PATH% in path and it will be replaced with Environment.CurrentDirectory;" + Environment.NewLine +
+                "Use %COMPANY_NAME% in path and it will be replaced with Company Name in player settings;" + Environment.NewLine +
+                "Use %PRODUCT_NAME% in path and it will be replaced with Product Name in player settings." + Environment.NewLine + Environment.NewLine +
+                "Assets under Editor or Resources folder will not be included in asset bundle.";
+            private readonly string help1 =
                 "Use %COMPANY_NAME% in path and it will be replaced with Company Name in player settings;" + Environment.NewLine +
                 "Use %PRODUCT_NAME% in path and it will be replaced with Product Name in player settings.";
+
+            private readonly Queue<Action> commands = new Queue<Action>();
+
+            public void AddCommand(Action command)
+            {
+                commands.Enqueue(command);
+            }
+
+            public void ExecuteCommands()
+            {
+                if(commands.Count > 0)
+                {
+                    commands.Dequeue()?.Invoke();
+                }
+            }
 
             public void Init()
             {
@@ -57,7 +77,7 @@ namespace E.Editor
                         drawElementCallback = (rect, index, isActive, isFocused) =>
                         {
                             AssetBundleSettings.ResourceFolder resourceFolder = resourceFolders[index];
-                            if (isFocused)
+                            if (isActive)
                             {
                                 resourceFolder.path = EditorGUI.TextField(rect, resourceFolder.path);
                             }
@@ -90,20 +110,19 @@ namespace E.Editor
                 EditorGUILayout.LabelField("Output", EditorStyles.boldLabel);
                 EditorGUI.indentLevel++;
                 FieldInfo outputPathInfo = assetType.GetField("outputPath", BindingFlags.NonPublic | BindingFlags.Instance);
-                AssetBundleSettings.PublishPath outputPath = (AssetBundleSettings.PublishPath)outputPathInfo.GetValue(asset);
-                outputPath.pathType = (AssetBundleSettings.PublishPathType)EditorGUILayout.EnumPopup(new GUIContent("Path Type", "输出路径类型"), outputPath.pathType);
-                if (outputPath.pathType == AssetBundleSettings.PublishPathType.Custom)
-                {
-                    outputPath.custom = EditorGUILayout.TextField(new GUIContent("Path", "自定义输出路径"), outputPath.custom);
-                }
-                outputPath.subpath = EditorGUILayout.TextField(new GUIContent("Subpath", "叠加输出路径"), outputPath.subpath);
-                EditorGUILayout.HelpBox(help, MessageType.None);
+                outputPathInfo.SetValue(asset, 
+                    EditorGUILayout.TextField(new GUIContent("Path", "输出路径"), 
+                    (string)outputPathInfo.GetValue(asset)));
+                EditorGUILayout.HelpBox(help0, MessageType.None);
                 //Resource Folders
-                Rect rect = EditorGUILayout.GetControlRect(true, 50 + (resourceFoldersList.count) * 20);
+                Rect rect = EditorGUILayout.GetControlRect(true, 50 + (resourceFoldersList.count > 0 ? resourceFoldersList.count : 1) * 20);
                 resourceFoldersList.DoList(EditorGUI.IndentedRect(rect));
                 if (GUILayout.Button(new GUIContent("Build", "Build asset bundle"), EditorStyles.miniButton))
                 {
-                    AssetBundleBuilder.Build();
+                    AddCommand(() =>
+                    {
+                        AssetBundleBuilder.Build();
+                    });
                 }
                 EditorGUI.indentLevel--;
                 EditorGUILayout.EndVertical();
@@ -119,7 +138,7 @@ namespace E.Editor
                     readPath.custom = EditorGUILayout.TextField(new GUIContent("Path", "自定义读取路径"), readPath.custom);
                 }
                 readPath.subpath = EditorGUILayout.TextField(new GUIContent("Subpath", "叠加读取路径"), readPath.subpath);
-                EditorGUILayout.HelpBox(help, MessageType.None);
+                EditorGUILayout.HelpBox(help1, MessageType.None);
                 //Use Web Request
                 asset.useWebRequest = EditorGUILayout.Toggle(new GUIContent("Use Web Request", "使用WebRequest方式读取，在某些平台下必选（WebGL,Android,IOS等）"), asset.useWebRequest);
                 //Simulate In Editor
@@ -147,6 +166,7 @@ namespace E.Editor
         public override void OnInspectorGUI()
         {
             Factory.Instance.Draw();
+            Factory.Instance.ExecuteCommands();
         }
     }
 
@@ -171,6 +191,7 @@ namespace E.Editor
             scrollPos = EditorGUILayout.BeginScrollView(scrollPos, GUILayout.Width(position.width), GUILayout.Height(position.height));
             AssetBundleSettingsEditor.Factory.Instance.Draw();
             EditorGUILayout.EndScrollView();
+            AssetBundleSettingsEditor.Factory.Instance.ExecuteCommands();
         }
     }
 }

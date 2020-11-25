@@ -1,8 +1,8 @@
 fileFormatVersion: 2
-guid: c33e4649090c6b548bf176fb5b085ee2
+guid: 6fdcd8d8962a8a14f8c5c8195ee33fdf
 NativeFormatImporter:
   externalObjects: {}
   mainObjectFileID: 0
   userData: 
-  assetBundleName: example.res.scenes.scene01.settings.ab
+  assetBundleName: example.res.shaders.ab
   assetBundleVariant: 

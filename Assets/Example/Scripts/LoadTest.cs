@@ -10,12 +10,17 @@ public class LoadTest : MonoBehaviour
         DontDestroyOnLoad(new GameObject("LoadTest").AddComponent<LoadTest>().gameObject);
 
         //Example
+        //WarmUp ShaderVariants
+        AssetBundleLoader.LoadAsset("Example/Res/Shaders/Scene01ShaderVariants.shadervariants", (ShaderVariantCollection shadervariants) =>
+        {
+            shadervariants.WarmUp();
+        });
+
         //Load a scene
         AssetBundleLoader.LoadScene("Example/Res/Scenes/Scene01/Scene01", (Scene scene01) =>
         {
             if (scene01 != default)
             {
-                AssetBundleTool.RecoverShader(GameObject.Find("Scene01"));
                 //Load an asset whith extension
                 AssetBundleLoader.LoadAsset("Example/Res/Prefabs/Sphere.prefab", (GameObject sphere) =>
                 {
@@ -30,13 +35,7 @@ public class LoadTest : MonoBehaviour
             }
         }, LoadSceneMode.Additive);
 
-        AssetBundleLoader.LoadAllAssets("Example/Res/Materials", (UnityEngine.Material[] assets) =>
-        {
-            for (int i = 0; i < assets.Length; i++)
-            {
-                Debug.Log(assets[i]);
-            }
-        });
+        
     }
 
     private void Update()
