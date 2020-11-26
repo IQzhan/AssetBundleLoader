@@ -113,6 +113,7 @@ namespace E
             return new string[0];
         }
 
+        [Serializable]
         public enum Compressed
         {
             None = 1,
@@ -146,6 +147,7 @@ namespace E
             }
         }
 
+        [Serializable]
         public enum PublishPathType
         {
             Application,

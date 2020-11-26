@@ -37,7 +37,7 @@ namespace E.Editor
                 "Use %APPLICATION_PATH% in path and it will be replaced with Environment.CurrentDirectory;" + Environment.NewLine +
                 "Use %COMPANY_NAME% in path and it will be replaced with Company Name in player settings;" + Environment.NewLine +
                 "Use %PRODUCT_NAME% in path and it will be replaced with Product Name in player settings." + Environment.NewLine + Environment.NewLine +
-                "Assets under Editor or Resources folder will not be included in asset bundle.";
+                "Assets under Resources folder will not be included in asset bundle.";
             private readonly string help1 =
                 "Use %COMPANY_NAME% in path and it will be replaced with Company Name in player settings;" + Environment.NewLine +
                 "Use %PRODUCT_NAME% in path and it will be replaced with Product Name in player settings.";

@@ -11,10 +11,10 @@ public class LoadTest : MonoBehaviour
 
         //Example
         //WarmUp ShaderVariants
-        AssetBundleLoader.LoadAsset("Example/Res/Shaders/Scene01ShaderVariants.shadervariants", (ShaderVariantCollection shadervariants) =>
-        {
-            shadervariants.WarmUp();
-        });
+        //AssetBundleLoader.LoadAsset("Example/Res/Shaders/Scene01ShaderVariants.shadervariants", (ShaderVariantCollection shadervariants) =>
+        //{
+        //    shadervariants.WarmUp();
+        //});
 
         //Load a scene
         AssetBundleLoader.LoadScene("Example/Res/Scenes/Scene01/Scene01", (Scene scene01) =>
