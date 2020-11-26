@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
@@ -46,7 +47,11 @@ namespace E.Editor
                         foreach (string GUID in GUIDs)
                         {
                             string assetPath = AssetDatabase.GUIDToAssetPath(GUID);
-                            AssetImporter.GetAtPath(assetPath).assetBundleName = null;
+                            Type assetType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
+                            if (!assetType.FullName.Equals("UnityEditor.MonoScript"))
+                            {
+                                AssetImporter.GetAtPath(assetPath).assetBundleName = null;
+                            }
                         }
                     }
                     Debug.Log("Clear asset bundle names " + path);
@@ -109,6 +114,14 @@ namespace E.Editor
         private static readonly Regex ResourcesRegex = new Regex(@"(?:.+[\\/]){0,1}Resources(?:[\\/].+){0,1}");
         //private static readonly Regex EditorRegex = new Regex(@"(?:.+[\\/]){0,1}Editor(?:[\\/].+){0,1}");
         private static readonly Regex UnityEditorNameSpaceRegex = new Regex(@"^(?:UnityEditor)(?:\s*\..*){0,1}");
+        private static readonly Regex StartWithAssetsRegex = new Regex(@"^(?:Assets[\\/]).*");
+        private static readonly Regex MatchInclinedRegex = new Regex(@"[\\/]");
+
+        private const string unity_builtin_extra_guid = "0000000000000000f000000000000000";
+        private const string unity_default_resources_guid = "0000000000000000e000000000000000";
+
+        private const string AssetsFolderName = "Assets";
+        private const string ExtractResourcesFolderName = "_extract_resources";
 
         private static void ResetBundleNames(string[] folders)
         {
@@ -137,7 +150,10 @@ namespace E.Editor
             }
             else
             {
-                assetImporter.assetBundleName = null;
+                if (!assetType.FullName.Equals("UnityEditor.MonoScript"))
+                {
+                    assetImporter.assetBundleName = null;
+                }
             }
         }
 
@@ -202,8 +218,11 @@ namespace E.Editor
             Debug.Log("Asset bundle build complete");
         }
 
-        [MenuItem("Assets/Bundle/CollectDependencies")]
-        public static void CollectDependencies()
+        /// <summary>
+        /// Not complete yet
+        /// </summary>
+        [MenuItem("Assets/Bundle/CollectDependenciesBuild")]
+        public static void CollectDependenciesBuild()
         {
             ResetAllAssetBundleNames();
             string[] abNames = AssetDatabase.GetAllAssetBundleNames();
@@ -218,11 +237,10 @@ namespace E.Editor
                     queue.Enqueue(AssetDatabase.LoadAssetAtPath(assetPath, assetType));
                 }
                 UnityEngine.Object[] collects = CollectDependencies(queue.ToArray());
-                foreach(UnityEngine.Object collect in collects)
+                foreach (UnityEngine.Object collect in collects)
                 {
                     if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(collect, out string guid, out long localid))
                     {
-                        //Debug.Log(collect.name + ", "+ collect.GetType().Name + ", " + AssetDatabase.GUIDToAssetPath(guid) + ", " + localid);
                         if (usedCounts.TryGetValue(collect, out int count))
                         {
                             usedCounts[collect] = ++count;
@@ -234,47 +252,100 @@ namespace E.Editor
                     }
                 }
             }
-            //剔除计数小于等于1的，剔除标记在包内的
+            string extractResourcesPath = Path.Combine(AssetsFolderName, ExtractResourcesFolderName);
             string[] folders = AssetBundleSettings.Instance.GetResourcesFolders();
-            foreach (KeyValuePair<UnityEngine.Object, int> kv in usedCounts)
+            List<AssetImporter> modifiedAssetImporters = new List<AssetImporter>();
+            try
             {
-                UnityEngine.Object asset = kv.Key;
-                string assetPath = AssetDatabase.GetAssetPath(asset);
-                bool inAssetbundle = false;
-                for(int i = 0; i < folders.Length; i++)
+                foreach (KeyValuePair<UnityEngine.Object, int> kv in usedCounts)
                 {
-                    //比照路径
-                    if (assetPath.Contains(folders[i]))
+                    UnityEngine.Object asset = kv.Key;
+                    int useCount = kv.Value;
+                    string assetPath = AssetDatabase.GetAssetPath(asset);
+                    bool inAssetbundle = false;
+                    for (int i = 0; i < folders.Length; i++)
                     {
-                        inAssetbundle = true;
-                        break;
+                        if (MatchInclinedRegex.Replace(assetPath, @"/")
+                            .Contains(MatchInclinedRegex.Replace(folders[i], @"/")))
+                        {
+                            inAssetbundle = true;
+                            break;
+                        }
+                    }
+                    if (!inAssetbundle && useCount > 1)
+                    {
+                        Type assetType = asset.GetType();
+                        //Debug.Log(asset.name + " " + assetType.Name + " " + useCount);
+                        if (StartWithAssetsRegex.IsMatch(assetPath))
+                        {
+                            AssetImporter assetImporter = AssetImporter.GetAtPath(assetPath);
+                            assetImporter.assetBundleName = AssetBundlePath.FileToBundleName(assetPath.Remove(0, AssetsFolderName.Length + 1));
+                            modifiedAssetImporters.Add(assetImporter);
+                        }
+                        else
+                        {
+                            //Create _extract_resources folder
+                            if (!AssetDatabase.IsValidFolder(extractResourcesPath))
+                            {
+                                AssetDatabase.CreateFolder(AssetsFolderName, ExtractResourcesFolderName);
+                            }
+                            string subdir = Path.Combine(extractResourcesPath, assetType.Name);
+                            if (!AssetDatabase.IsValidFolder(subdir))
+                            {
+                                AssetDatabase.CreateFolder(extractResourcesPath, assetType.Name);
+                            }
+                            //Clone Asset to _extract_resources
+                            string savePath = Path.Combine(subdir, MatchInclinedRegex.Replace(asset.name, "_") + ".asset");
+                            UnityEngine.Object clone = UnityEngine.Object.Instantiate(asset);
+                            clone.name = asset.name;
+                            AssetDatabase.CreateAsset(clone, savePath);
+                            AssetDatabase.SaveAssets();
+                            AssetImporter assetImporter = AssetImporter.GetAtPath(savePath);
+                            assetImporter.assetBundleName = AssetBundlePath.FileToBundleName(savePath.Remove(0, AssetsFolderName.Length + 1));
+                            modifiedAssetImporters.Add(assetImporter);
+                            //Change reference
+                            //TODO
+                            if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(clone, out string guid, out long localid))
+                            {
+                                
+                            }
+                        }
                     }
                 }
-                if(!inAssetbundle && kv.Value > 1)
-                {
-                    Debug.Log(kv.Key.name + " " + kv.Key.GetType().Name + " " + kv.Value);
-                    if (assetPath.StartsWith("Assets"))
-                    {
-                        AssetImporter assetImporter = AssetImporter.GetAtPath(assetPath);
-                        assetImporter.assetBundleName = AssetBundlePath.FileToBundleName(assetPath.Remove(0, "Assets/".Length));
-                    }
-                    else
-                    {
-                        //TODO SaveAsset
-                    }
-                }
+                //Build asset bundle
+                //DeleteUselessOutputFiles();
+                //BuildAssetBundles();
+                Revok();
             }
-            //剩下的项目资源标记assetbundleName，保存内部资源asset，修改对内部资源的引用然后标记assetbundleName
-            //打包
+            catch (Exception anyException)
+            {
+                Revok();
+                throw anyException;
+            }
+            
+            void Revok()
+            {
+                //Revok assetBundleName
+                foreach (AssetImporter modifiedAssetImporter in modifiedAssetImporters)
+                {
+                    modifiedAssetImporter.assetBundleName = null;
+                }
+                modifiedAssetImporters.Clear();
+                //Delete _extract_resources folder
+                if (AssetDatabase.IsValidFolder(extractResourcesPath))
+                {
+                    AssetDatabase.DeleteAsset(extractResourcesPath);
+                }
+                AssetDatabase.RemoveUnusedAssetBundleNames();
+                //Revok change reference
+                //TODO
+            }
         }
 
-        private const string unity_builtin_extra_guid = "0000000000000000f000000000000000";
-        private const string unity_default_resources_guid = "0000000000000000e000000000000000";
-
-        private static UnityEngine.Object[] CollectDependencies(UnityEngine.Object[] oris)
+        private static UnityEngine.Object[] CollectDependencies(UnityEngine.Object[] roots)
         {
             Queue<UnityEngine.Object> queue = new Queue<UnityEngine.Object>();
-            UnityEngine.Object[] selObjs = EditorUtility.CollectDependencies(oris);
+            UnityEngine.Object[] selObjs = EditorUtility.CollectDependencies(roots);
             Dictionary<string, bool> guids = new Dictionary<string, bool>();
             foreach (UnityEngine.Object selObj in selObjs)
             {
@@ -291,8 +362,15 @@ namespace E.Editor
                         {
                             if (!guids.ContainsKey(guid))
                             {
-                                UnityEngine.Object mainAsset = AssetDatabase.LoadMainAssetAtPath(AssetDatabase.GUIDToAssetPath(guid));
-                                queue.Enqueue(mainAsset);
+                                if (AssetDatabase.IsMainAsset(selObj))
+                                {
+                                    queue.Enqueue(selObj);
+                                }
+                                else
+                                {
+                                    UnityEngine.Object mainAsset = AssetDatabase.LoadMainAssetAtPath(AssetDatabase.GUIDToAssetPath(guid));
+                                    queue.Enqueue(mainAsset);
+                                }
                                 guids.Add(guid, true);
                             }
                         }
@@ -302,8 +380,20 @@ namespace E.Editor
             return queue.ToArray();
         }
 
-        
+        private static Dictionary<UnityEngine.Object, RootDependenciesInfo> CollectDependencies(UnityEngine.Object root)
+        {
+            Dictionary<UnityEngine.Object, RootDependenciesInfo> infos = new Dictionary<UnityEngine.Object, RootDependenciesInfo>();
 
+            return infos;
+        }
+
+        public class RootDependenciesInfo
+        {
+            public UnityEngine.Object root;
+
+            //public string ori;
+            //public string changed;
+        }
     }
 #endif
 }
