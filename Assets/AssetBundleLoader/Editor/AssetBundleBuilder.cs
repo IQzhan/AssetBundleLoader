@@ -15,6 +15,13 @@ namespace E.Editor
 #if UNITY_EDITOR
     public class AssetBundleBuilder
     {
+        [InitializeOnLoadMethod]
+        private static void OnEditorLoad()
+        {
+            EditorSettings.serializationMode = SerializationMode.ForceText;
+            
+        }
+
         /// <summary>
         /// Build asset bundles
         /// </summary>
@@ -221,7 +228,7 @@ namespace E.Editor
         /// <summary>
         /// Not complete yet
         /// </summary>
-        [MenuItem("Assets/Bundle/CollectDependenciesBuild")]
+        //[MenuItem("Assets/Bundle/CollectDependenciesBuild")]
         public static void CollectDependenciesBuild()
         {
             ResetAllAssetBundleNames();
@@ -332,10 +339,10 @@ namespace E.Editor
                 }
                 modifiedAssetImporters.Clear();
                 //Delete _extract_resources folder
-                if (AssetDatabase.IsValidFolder(extractResourcesPath))
-                {
-                    AssetDatabase.DeleteAsset(extractResourcesPath);
-                }
+                //if (AssetDatabase.IsValidFolder(extractResourcesPath))
+                //{
+                //    AssetDatabase.DeleteAsset(extractResourcesPath);
+                //}
                 AssetDatabase.RemoveUnusedAssetBundleNames();
                 //Revok change reference
                 //TODO
@@ -380,20 +387,107 @@ namespace E.Editor
             return queue.ToArray();
         }
 
-        private static Dictionary<UnityEngine.Object, RootDependenciesInfo> CollectDependencies(UnityEngine.Object root)
+        private static UnityEngine.Object[] CollectDependencies(UnityEngine.Object root)
         {
-            Dictionary<UnityEngine.Object, RootDependenciesInfo> infos = new Dictionary<UnityEngine.Object, RootDependenciesInfo>();
-
-            return infos;
+            return CollectDependencies(new UnityEngine.Object[] { root });
         }
 
-        public class RootDependenciesInfo
+        private static void MatchCollectDependencies(UnityEngine.Object root)
         {
-            public UnityEngine.Object root;
+            //Find reference
+            if(AssetDatabase.TryGetGUIDAndLocalFileIdentifier(root, out string guid, out long localid))
+            {
+                SerializedObject so = new SerializedObject(root);
+                StringBuilder sb = new StringBuilder();
+                so.Update();
+                SerializedProperty sp = so.GetIterator();
+                while (sp.Next(true))
+                {
+                    sb.AppendLine(sp.name + " " + sp.propertyType);
+                    if(sp.propertyType == SerializedPropertyType.ObjectReference)
+                    {
 
-            //public string ori;
-            //public string changed;
+                    }
+                }
+                so.ApplyModifiedProperties();
+                EditorUtility.SetDirty(root);
+                AssetDatabase.SaveAssets();
+                Debug.Log(sb);
+            }
         }
+
+        public class ObjectDependencies
+        {
+            //match a string line like  {fileID: 1828408971408620874, guid: dca30aeb80de1d24485341d3b41b91ca, type: 3}
+            public static readonly Regex MatchRegex = new Regex(@"\{\s*fileID\s*:\s*([0-9]+)\s*,\s*guid\s*:\s*([0-9a-f]+)\s*,\s*type\s*:\s*([0-9])\s*\}");
+            public static readonly Regex MatchFileIDRegex = new Regex(@"");
+            public static readonly Regex MatchGUIDRegex = new Regex(@"");
+            public static readonly Regex MatchTypeRegex = new Regex(@"");
+            private ObjectDependencies() { }
+
+            private UnityEngine.Object root;
+
+            private string filePath = string.Empty;
+
+            private string[] lines = new string[0];
+
+            private Queue<DependenciesInfo> infos = new Queue<DependenciesInfo>();
+
+            public class DependenciesInfo
+            {
+                public int[] atLines = new int[0];
+
+                public long fileId = 0;
+
+                public string guid = string.Empty;
+
+                public int type = 0;
+
+                private UnityEngine.Object source;
+
+                public UnityEngine.Object Source
+                {
+                    get
+                    {
+                        if(source == null)
+                        {
+                            source = AssetDatabase.LoadMainAssetAtPath(AssetDatabase.GUIDToAssetPath(guid));
+                            //source = AssetDatabase.LoadAssetAtPath(Path.Combine("Assets", ))
+                        }
+                        return source;
+                    }
+                }
+            }
+
+            public static bool TryGetDependenciesInfo(UnityEngine.Object root, out ObjectDependencies dep)
+            {
+                dep = default;
+                return false;
+            }
+        }
+
+        //[MenuItem("Assets/Bundle/Test")]
+        private static void Test()
+        {
+            //string str = "  m_LightingSettings: {fileID: 4890085278179872738, guid: c33e4649090c6b548bf176fb5b085ee2, type: 2}";
+            //MatchCollection matchs = ObjectDependencies.MatchRegex.Matches(str);
+            //if(matchs.Count > 0)
+            //{
+            //    GroupCollection groups = matchs[0].Groups;
+            //    long fileID = long.Parse(groups[1].Value);
+            //    string guid = groups[2].Value;
+            //    int type = int.Parse(groups[3].Value);
+            //    Debug.Log("match: "  + fileID + " " + guid + " " + type);
+            //}
+            //else
+            //{
+            //    Debug.Log("not match");
+            //}
+
+            MatchCollectDependencies(AssetDatabase.LoadAssetAtPath("Assets/Example/Res/Prefabs/Room.prefab", typeof(UnityEngine.GameObject)));
+        }
+
+
     }
 #endif
 }
