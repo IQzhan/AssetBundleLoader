@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEditor;
@@ -392,102 +393,271 @@ namespace E.Editor
             return CollectDependencies(new UnityEngine.Object[] { root });
         }
 
-        private static void MatchCollectDependencies(UnityEngine.Object root)
+        public class ObjectReferencesCollection
         {
-            //Find reference
-            if(AssetDatabase.TryGetGUIDAndLocalFileIdentifier(root, out string guid, out long localid))
+            private Dictionary<UnityEngine.Object, ObjectReferences> references = new Dictionary<UnityEngine.Object, ObjectReferences>();
+            
+            public ObjectReferences[] GetReferences()
             {
-                SerializedObject so = new SerializedObject(root);
-                StringBuilder sb = new StringBuilder();
-                so.Update();
-                SerializedProperty sp = so.GetIterator();
-                while (sp.Next(true))
+                List<ObjectReferences> refs = new List<ObjectReferences>();
+                foreach(ObjectReferences objectReferences in references.Values)
                 {
-                    sb.AppendLine(sp.name + " " + sp.propertyType);
-                    if(sp.propertyType == SerializedPropertyType.ObjectReference)
+                    Type objType = objectReferences.obj.GetType();
+                    if (!objType.FullName.Equals("UnityEngine.Object"))
                     {
-
+                        refs.Add(objectReferences);
                     }
                 }
-                so.ApplyModifiedProperties();
-                EditorUtility.SetDirty(root);
-                AssetDatabase.SaveAssets();
-                Debug.Log(sb);
+                Debug.Log("Total: " + refs.Count);
+                return refs.ToArray();
+            }
+
+            public UnityEngine.Object[] GetReferencesObject()
+            {
+                List<UnityEngine.Object> refs = new List<UnityEngine.Object>();
+                foreach (ObjectReferences objectReferences in references.Values)
+                {
+                    //Type objType = objectReferences.obj.GetType();
+                    //if (!objType.FullName.Equals("UnityEngine.Object"))
+                    //{
+                    //    refs.Add(objectReferences.obj);
+                    //}
+                    refs.Add(objectReferences.obj);
+                }
+                Debug.Log("Total: " + refs.Count);
+                return refs.ToArray();
+            }
+
+            public ObjectReferences[] GetAssetReferences()
+            {
+                List<ObjectReferences> refs = new List<ObjectReferences>();
+                foreach (ObjectReferences objectReferences in references.Values)
+                {
+                    refs.Add(objectReferences);
+                }
+                Debug.Log("Total: " + refs.Count);
+                return refs.ToArray();
             }
         }
 
-        public class ObjectDependencies
+        public class ObjectReferences
         {
-            //match a string line like  {fileID: 1828408971408620874, guid: dca30aeb80de1d24485341d3b41b91ca, type: 3}
-            public static readonly Regex MatchRegex = new Regex(@"\{\s*fileID\s*:\s*([0-9]+)\s*,\s*guid\s*:\s*([0-9a-f]+)\s*,\s*type\s*:\s*([0-9])\s*\}");
-            public static readonly Regex MatchFileIDRegex = new Regex(@"");
-            public static readonly Regex MatchGUIDRegex = new Regex(@"");
-            public static readonly Regex MatchTypeRegex = new Regex(@"");
-            private ObjectDependencies() { }
+            public UnityEngine.Object obj;
 
-            private UnityEngine.Object root;
+            public Dictionary<UnityEngine.Object, List<string>> from = new Dictionary<UnityEngine.Object, List<string>>();
 
-            private string filePath = string.Empty;
+            public List<int> inGrops = new List<int>();
+        }
 
-            private string[] lines = new string[0];
-
-            private Queue<DependenciesInfo> infos = new Queue<DependenciesInfo>();
-
-            public class DependenciesInfo
+        private static ObjectReferencesCollection FindReferences(params UnityEngine.Object[][] rootGrops)
+        {
+            Dictionary<UnityEngine.Object, ObjectReferences> references = new Dictionary<UnityEngine.Object, ObjectReferences>();
+            for(int i = 0; i < rootGrops.Length; i++)
             {
-                public int[] atLines = new int[0];
+                Find(i, rootGrops[i]);
+            }
+            ObjectReferencesCollection objectReferences = new ObjectReferencesCollection();
+            FieldInfo fieldInfo = objectReferences.GetType().GetField("references", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            fieldInfo.SetValue(objectReferences, references);
+            return objectReferences;
 
-                public long fileId = 0;
-
-                public string guid = string.Empty;
-
-                public int type = 0;
-
-                private UnityEngine.Object source;
-
-                public UnityEngine.Object Source
+            bool AddReference(int gropID, UnityEngine.Object obj, UnityEngine.Object parent, string propertyPath)
+            {
+                bool result = false;
+                if(!references.TryGetValue(obj, out ObjectReferences refe))
                 {
-                    get
+                    result = true;
+                    refe = references[obj] = new ObjectReferences()
                     {
-                        if(source == null)
+                        obj = obj
+                    };
+                }
+                if (!refe.inGrops.Contains(gropID))
+                {
+                    refe.inGrops.Add(gropID);
+                }
+                if(!refe.from.TryGetValue(parent, out List<string> propertyPaths))
+                {
+                    propertyPaths = refe.from[parent] = new List<string>();
+                }
+                if (!propertyPaths.Contains(propertyPath))
+                {
+                    propertyPaths.Add(propertyPath);
+                }
+                return result;
+            }
+            
+            void Find(int gropID, params UnityEngine.Object[] objs)
+            {
+                for(int i = 0; i < objs.Length; i++)
+                {
+                    UnityEngine.Object obj = objs[i];
+                    SerializedObject serializedObject = new SerializedObject(obj);
+                    serializedObject.Update();
+                    SerializedProperty serializedProperty = serializedObject.GetIterator();
+                    while (serializedProperty.Next(true))
+                    {
+                        UnityEngine.Object referenceObject = null;
+                        switch (serializedProperty.propertyType)
                         {
-                            source = AssetDatabase.LoadMainAssetAtPath(AssetDatabase.GUIDToAssetPath(guid));
-                            //source = AssetDatabase.LoadAssetAtPath(Path.Combine("Assets", ))
+                            default:
+                                break;
+                            case SerializedPropertyType.ObjectReference:
+                                referenceObject = serializedProperty.objectReferenceValue;
+                                break;
+                            case SerializedPropertyType.ExposedReference:
+                                referenceObject = serializedProperty.exposedReferenceValue;
+                                break;
                         }
-                        return source;
+                        if (referenceObject != null &&
+                            AddReference(gropID, referenceObject, obj, serializedProperty.propertyPath))
+                        {
+                            
+                            Debug.LogError(serializedProperty.name + " " + serializedProperty.type);
+
+                            Find(gropID, referenceObject);
+                        }
                     }
+                    serializedObject.Dispose();
                 }
             }
+        }
 
-            public static bool TryGetDependenciesInfo(UnityEngine.Object root, out ObjectDependencies dep)
+        [MenuItem("Assets/Bundle/Test0")]
+        private static void Test0()
+        {
+            ResetAllAssetBundleNames();
+            string[] abNames = AssetDatabase.GetAllAssetBundleNames();
+            List<UnityEngine.Object[]> objGrops = new List<UnityEngine.Object[]>();
+            foreach (string abName in abNames)
             {
-                dep = default;
-                return false;
+                string[] assetPaths = AssetDatabase.GetAssetPathsFromAssetBundle(abName);
+                List<UnityEngine.Object> objGrop = new List<UnityEngine.Object>();
+                foreach (string assetPath in assetPaths)
+                {
+                    Type assetType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
+                    objGrop.Add(AssetDatabase.LoadAssetAtPath(assetPath, assetType));
+                }
+                objGrops.Add(objGrop.ToArray());
+            }
+            ObjectReferencesCollection collection = FindReferences(objGrops.ToArray());
+            Selection.objects = collection.GetReferencesObject();
+
+        }
+
+        public static readonly Regex MatchRegex = new Regex(@"\{\s*fileID\s*:\s*([0-9]+)\s*,\s*guid\s*:\s*([0-9a-f]+)\s*,\s*type\s*:\s*([0-9])\s*\}");
+        public static readonly Regex MatchFileIDRegex = new Regex(@"(?:fileID\s*:\s*)([0-9]+)");
+        public static readonly Regex MatchGUIDRegex = new Regex(@"(?:guid\s*:\s*)([0-9a-f]+)");
+        public static readonly Regex MatchTypeRegex = new Regex(@"(?:type\s*:\s*)([0-9])");
+
+        private static MatchedLine[] MatchFileText(string filePath)
+        {
+            List<MatchedLine> matchedLines = new List<MatchedLine>();
+            string[] lines = File.ReadAllLines(filePath);
+            for(int i = 0; i < lines.Length; i++)
+            {
+                MatchCollection matches = MatchRegex.Matches(lines[i]);
+                if(matches.Count > 0)
+                {
+                    GroupCollection groups = matches[0].Groups;
+                    matchedLines.Add(new MatchedLine()
+                    {
+                        filePath = filePath,
+                        lineIndex = i,
+                        fileID = long.Parse(groups[1].Value),
+                        guid = groups[2].Value,
+                        type = int.Parse(groups[3].Value)
+                    });
+                }
+            }
+            return matchedLines.ToArray();
+        }
+
+        
+
+        private static void ReplaceWithNew(MatchedLine[] oris, long newFileID, string newGUID, int newType)
+        {
+            Dictionary<string, List<MatchedLine>> reorder = new Dictionary<string, List<MatchedLine>>();
+            for(int i = 0; i < oris.Length; i++)
+            {
+                MatchedLine matchedLine = oris[i];
+                if (!reorder.TryGetValue(matchedLine.filePath, out List<MatchedLine> matchLineList))
+                {
+                    reorder[matchedLine.filePath] = matchLineList = new List<MatchedLine>();
+                }
+                matchLineList.Add(matchedLine);
+            }
+            foreach(KeyValuePair<string, List<MatchedLine>> kv in reorder)
+            {
+                string filePath = kv.Key;
+                List<MatchedLine> list = kv.Value;
+                string[] lines = File.ReadAllLines(filePath);
+                for(int i = 0; i < list.Count; i++)
+                {
+                    MatchedLine matchedLine = list[i];
+                    string oriLine = lines[matchedLine.lineIndex];
+                    MatchFileIDRegex.Replace(oriLine, newFileID.ToString());
+                    MatchGUIDRegex.Replace(oriLine, newGUID);
+                    MatchTypeRegex.Replace(oriLine, newType.ToString());
+                }
+                //commit
+                File.WriteAllLines(filePath, lines);
             }
         }
 
-        //[MenuItem("Assets/Bundle/Test")]
-        private static void Test()
+        public class MatchedLine
         {
-            //string str = "  m_LightingSettings: {fileID: 4890085278179872738, guid: c33e4649090c6b548bf176fb5b085ee2, type: 2}";
-            //MatchCollection matchs = ObjectDependencies.MatchRegex.Matches(str);
-            //if(matchs.Count > 0)
-            //{
-            //    GroupCollection groups = matchs[0].Groups;
-            //    long fileID = long.Parse(groups[1].Value);
-            //    string guid = groups[2].Value;
-            //    int type = int.Parse(groups[3].Value);
-            //    Debug.Log("match: "  + fileID + " " + guid + " " + type);
-            //}
-            //else
-            //{
-            //    Debug.Log("not match");
-            //}
+            public string filePath;
 
-            MatchCollectDependencies(AssetDatabase.LoadAssetAtPath("Assets/Example/Res/Prefabs/Room.prefab", typeof(UnityEngine.GameObject)));
+            public int lineIndex = -1;
+
+            public long fileID;
+
+            public string guid;
+
+            public int type;
         }
 
+        [MenuItem("Assets/Bundle/Test1")]
+        private static void Test1()
+        {
+            UnityEngine.Object scene01 = AssetDatabase.LoadMainAssetAtPath("Assets/Example/Res/Scenes/Scene01/Scene01.unity");
+            //ObjectReferencesCollection collection1 = FindReferences(new UnityEngine.Object[] { sc01 });
+            //Selection.objects = collection1.GetReferencesObject();
+            SerializedObject serializedObject = new SerializedObject(scene01);
+            SerializedProperty serializedProperty = serializedObject.GetIterator();
+            while (serializedProperty.Next(true))
+            {
+                UnityEngine.Object referenceObject = null;
+                switch (serializedProperty.propertyType)
+                {
+                    default:
+                        Debug.Log(serializedProperty.name + " " + serializedProperty.type);
+                        break;
+                    case SerializedPropertyType.ObjectReference:
+                        referenceObject = serializedProperty.objectReferenceValue;
+                        Debug.Log(serializedProperty.name + " " + serializedProperty.type);
+                        break;
+                    case SerializedPropertyType.ExposedReference:
+                        referenceObject = serializedProperty.exposedReferenceValue;
+                        Debug.Log(serializedProperty.name + " " + serializedProperty.type);
+                        break;
+                    case SerializedPropertyType.Integer:
+                        Debug.Log(serializedProperty.name + " " + serializedProperty.type + " " + serializedProperty.intValue);
+                        break;
+                    case SerializedPropertyType.String:
+                        Debug.Log(serializedProperty.name + " " + serializedProperty.type + " " + serializedProperty.stringValue);
+                        break;
 
+                }
+                if (referenceObject != null)
+                {
+                    Debug.LogError(referenceObject.name);
+                }
+            }
+            serializedObject.Dispose();
+
+        }
     }
 #endif
 }
