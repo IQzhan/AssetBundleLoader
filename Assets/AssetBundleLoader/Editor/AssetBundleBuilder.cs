@@ -8,6 +8,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 
@@ -226,388 +227,24 @@ namespace E.Editor
             Debug.Log("Asset bundle build complete");
         }
 
-        /// <summary>
-        /// Not complete yet
-        /// </summary>
-        //[MenuItem("Assets/Bundle/CollectDependenciesBuild")]
-        public static void CollectDependenciesBuild()
-        {
-            ResetAllAssetBundleNames();
-            string[] abNames = AssetDatabase.GetAllAssetBundleNames();
-            Dictionary<UnityEngine.Object, int> usedCounts = new Dictionary<UnityEngine.Object, int>();
-            foreach (string abName in abNames)
-            {
-                string[] assetPaths = AssetDatabase.GetAssetPathsFromAssetBundle(abName);
-                Queue<UnityEngine.Object> queue = new Queue<UnityEngine.Object>();
-                foreach(string assetPath in assetPaths)
-                {
-                    Type assetType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
-                    queue.Enqueue(AssetDatabase.LoadAssetAtPath(assetPath, assetType));
-                }
-                UnityEngine.Object[] collects = CollectDependencies(queue.ToArray());
-                foreach (UnityEngine.Object collect in collects)
-                {
-                    if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(collect, out string guid, out long localid))
-                    {
-                        if (usedCounts.TryGetValue(collect, out int count))
-                        {
-                            usedCounts[collect] = ++count;
-                        }
-                        else
-                        {
-                            usedCounts[collect] = 1;
-                        }
-                    }
-                }
-            }
-            string extractResourcesPath = Path.Combine(AssetsFolderName, ExtractResourcesFolderName);
-            string[] folders = AssetBundleSettings.Instance.GetResourcesFolders();
-            List<AssetImporter> modifiedAssetImporters = new List<AssetImporter>();
-            try
-            {
-                foreach (KeyValuePair<UnityEngine.Object, int> kv in usedCounts)
-                {
-                    UnityEngine.Object asset = kv.Key;
-                    int useCount = kv.Value;
-                    string assetPath = AssetDatabase.GetAssetPath(asset);
-                    bool inAssetbundle = false;
-                    for (int i = 0; i < folders.Length; i++)
-                    {
-                        if (MatchInclinedRegex.Replace(assetPath, @"/")
-                            .Contains(MatchInclinedRegex.Replace(folders[i], @"/")))
-                        {
-                            inAssetbundle = true;
-                            break;
-                        }
-                    }
-                    if (!inAssetbundle && useCount > 1)
-                    {
-                        Type assetType = asset.GetType();
-                        //Debug.Log(asset.name + " " + assetType.Name + " " + useCount);
-                        if (StartWithAssetsRegex.IsMatch(assetPath))
-                        {
-                            AssetImporter assetImporter = AssetImporter.GetAtPath(assetPath);
-                            assetImporter.assetBundleName = AssetBundlePath.FileToBundleName(assetPath.Remove(0, AssetsFolderName.Length + 1));
-                            modifiedAssetImporters.Add(assetImporter);
-                        }
-                        else
-                        {
-                            //Create _extract_resources folder
-                            if (!AssetDatabase.IsValidFolder(extractResourcesPath))
-                            {
-                                AssetDatabase.CreateFolder(AssetsFolderName, ExtractResourcesFolderName);
-                            }
-                            string subdir = Path.Combine(extractResourcesPath, assetType.Name);
-                            if (!AssetDatabase.IsValidFolder(subdir))
-                            {
-                                AssetDatabase.CreateFolder(extractResourcesPath, assetType.Name);
-                            }
-                            //Clone Asset to _extract_resources
-                            string savePath = Path.Combine(subdir, MatchInclinedRegex.Replace(asset.name, "_") + ".asset");
-                            UnityEngine.Object clone = UnityEngine.Object.Instantiate(asset);
-                            clone.name = asset.name;
-                            AssetDatabase.CreateAsset(clone, savePath);
-                            AssetDatabase.SaveAssets();
-                            AssetImporter assetImporter = AssetImporter.GetAtPath(savePath);
-                            assetImporter.assetBundleName = AssetBundlePath.FileToBundleName(savePath.Remove(0, AssetsFolderName.Length + 1));
-                            modifiedAssetImporters.Add(assetImporter);
-                            //Change reference
-                            //TODO
-                            if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(clone, out string guid, out long localid))
-                            {
-                                
-                            }
-                        }
-                    }
-                }
-                //Build asset bundle
-                //DeleteUselessOutputFiles();
-                //BuildAssetBundles();
-                Revok();
-            }
-            catch (Exception anyException)
-            {
-                Revok();
-                throw anyException;
-            }
-            
-            void Revok()
-            {
-                //Revok assetBundleName
-                foreach (AssetImporter modifiedAssetImporter in modifiedAssetImporters)
-                {
-                    modifiedAssetImporter.assetBundleName = null;
-                }
-                modifiedAssetImporters.Clear();
-                //Delete _extract_resources folder
-                //if (AssetDatabase.IsValidFolder(extractResourcesPath))
-                //{
-                //    AssetDatabase.DeleteAsset(extractResourcesPath);
-                //}
-                AssetDatabase.RemoveUnusedAssetBundleNames();
-                //Revok change reference
-                //TODO
-            }
-        }
-
-        private static UnityEngine.Object[] CollectDependencies(UnityEngine.Object[] roots)
-        {
-            Queue<UnityEngine.Object> queue = new Queue<UnityEngine.Object>();
-            UnityEngine.Object[] selObjs = EditorUtility.CollectDependencies(roots);
-            Dictionary<string, bool> guids = new Dictionary<string, bool>();
-            foreach (UnityEngine.Object selObj in selObjs)
-            {
-                Type selObjType = selObj.GetType();
-                if (!(selObj is Component) && !UnityEditorNameSpaceRegex.IsMatch(selObjType.Namespace))
-                {
-                    if(AssetDatabase.TryGetGUIDAndLocalFileIdentifier(selObj, out string guid, out long localid))
-                    {
-                        if(guid.Equals(unity_builtin_extra_guid) || guid.Equals(unity_default_resources_guid))
-                        {
-                            queue.Enqueue(selObj);
-                        }
-                        else
-                        {
-                            if (!guids.ContainsKey(guid))
-                            {
-                                if (AssetDatabase.IsMainAsset(selObj))
-                                {
-                                    queue.Enqueue(selObj);
-                                }
-                                else
-                                {
-                                    UnityEngine.Object mainAsset = AssetDatabase.LoadMainAssetAtPath(AssetDatabase.GUIDToAssetPath(guid));
-                                    queue.Enqueue(mainAsset);
-                                }
-                                guids.Add(guid, true);
-                            }
-                        }
-                    }
-                }
-            }
-            return queue.ToArray();
-        }
-
-        private static UnityEngine.Object[] CollectDependencies(UnityEngine.Object root)
-        {
-            return CollectDependencies(new UnityEngine.Object[] { root });
-        }
-
-        public class ObjectReferencesCollection
-        {
-            private Dictionary<UnityEngine.Object, ObjectReferences> references = new Dictionary<UnityEngine.Object, ObjectReferences>();
-            
-            public ObjectReferences[] GetReferences()
-            {
-                List<ObjectReferences> refs = new List<ObjectReferences>();
-                foreach(ObjectReferences objectReferences in references.Values)
-                {
-                    Type objType = objectReferences.obj.GetType();
-                    if (!objType.FullName.Equals("UnityEngine.Object"))
-                    {
-                        refs.Add(objectReferences);
-                    }
-                }
-                Debug.Log("Total: " + refs.Count);
-                return refs.ToArray();
-            }
-
-            public UnityEngine.Object[] GetReferencesObject()
-            {
-                List<UnityEngine.Object> refs = new List<UnityEngine.Object>();
-                foreach (ObjectReferences objectReferences in references.Values)
-                {
-                    //Type objType = objectReferences.obj.GetType();
-                    //if (!objType.FullName.Equals("UnityEngine.Object"))
-                    //{
-                    //    refs.Add(objectReferences.obj);
-                    //}
-                    refs.Add(objectReferences.obj);
-                }
-                Debug.Log("Total: " + refs.Count);
-                return refs.ToArray();
-            }
-
-            public ObjectReferences[] GetAssetReferences()
-            {
-                List<ObjectReferences> refs = new List<ObjectReferences>();
-                foreach (ObjectReferences objectReferences in references.Values)
-                {
-                    refs.Add(objectReferences);
-                }
-                Debug.Log("Total: " + refs.Count);
-                return refs.ToArray();
-            }
-        }
-
-        public class ObjectReferences
-        {
-            public UnityEngine.Object obj;
-
-            public Dictionary<UnityEngine.Object, List<string>> from = new Dictionary<UnityEngine.Object, List<string>>();
-
-            public List<int> inGrops = new List<int>();
-        }
-
-        private static ObjectReferencesCollection FindReferences(params UnityEngine.Object[][] rootGrops)
-        {
-            Dictionary<UnityEngine.Object, ObjectReferences> references = new Dictionary<UnityEngine.Object, ObjectReferences>();
-            for(int i = 0; i < rootGrops.Length; i++)
-            {
-                Find(i, rootGrops[i]);
-            }
-            ObjectReferencesCollection objectReferences = new ObjectReferencesCollection();
-            FieldInfo fieldInfo = objectReferences.GetType().GetField("references", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            fieldInfo.SetValue(objectReferences, references);
-            return objectReferences;
-
-            bool AddReference(int gropID, UnityEngine.Object obj, UnityEngine.Object parent, string propertyPath)
-            {
-                bool result = false;
-                if(!references.TryGetValue(obj, out ObjectReferences refe))
-                {
-                    result = true;
-                    refe = references[obj] = new ObjectReferences()
-                    {
-                        obj = obj
-                    };
-                }
-                if (!refe.inGrops.Contains(gropID))
-                {
-                    refe.inGrops.Add(gropID);
-                }
-                if(!refe.from.TryGetValue(parent, out List<string> propertyPaths))
-                {
-                    propertyPaths = refe.from[parent] = new List<string>();
-                }
-                if (!propertyPaths.Contains(propertyPath))
-                {
-                    propertyPaths.Add(propertyPath);
-                }
-                return result;
-            }
-            
-            void Find(int gropID, params UnityEngine.Object[] objs)
-            {
-                for(int i = 0; i < objs.Length; i++)
-                {
-                    UnityEngine.Object obj = objs[i];
-                    SerializedObject serializedObject = new SerializedObject(obj);
-                    serializedObject.Update();
-                    SerializedProperty serializedProperty = serializedObject.GetIterator();
-                    while (serializedProperty.Next(true))
-                    {
-                        UnityEngine.Object referenceObject = null;
-                        switch (serializedProperty.propertyType)
-                        {
-                            default:
-                                break;
-                            case SerializedPropertyType.ObjectReference:
-                                referenceObject = serializedProperty.objectReferenceValue;
-                                break;
-                            case SerializedPropertyType.ExposedReference:
-                                referenceObject = serializedProperty.exposedReferenceValue;
-                                break;
-                        }
-                        if (referenceObject != null &&
-                            AddReference(gropID, referenceObject, obj, serializedProperty.propertyPath))
-                        {
-                            
-                            Debug.LogError(serializedProperty.name + " " + serializedProperty.type);
-
-                            Find(gropID, referenceObject);
-                        }
-                    }
-                    serializedObject.Dispose();
-                }
-            }
-        }
-
-        //[MenuItem("Assets/Bundle/Test0")]
-        private static void Test0()
-        {
-            ResetAllAssetBundleNames();
-            string[] abNames = AssetDatabase.GetAllAssetBundleNames();
-            List<UnityEngine.Object[]> objGrops = new List<UnityEngine.Object[]>();
-            foreach (string abName in abNames)
-            {
-                string[] assetPaths = AssetDatabase.GetAssetPathsFromAssetBundle(abName);
-                List<UnityEngine.Object> objGrop = new List<UnityEngine.Object>();
-                foreach (string assetPath in assetPaths)
-                {
-                    Type assetType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
-                    objGrop.Add(AssetDatabase.LoadAssetAtPath(assetPath, assetType));
-                }
-                objGrops.Add(objGrop.ToArray());
-            }
-            ObjectReferencesCollection collection = FindReferences(objGrops.ToArray());
-            Selection.objects = collection.GetReferencesObject();
-
-        }
-
-        public static readonly Regex MatchRegex = new Regex(@"\{\s*fileID\s*:\s*([0-9]+)\s*,\s*guid\s*:\s*([0-9a-f]+)\s*,\s*type\s*:\s*([0-9])\s*\}");
-        public static readonly Regex MatchFileIDRegex = new Regex(@"(?:fileID\s*:\s*)([0-9]+)");
-        public static readonly Regex MatchGUIDRegex = new Regex(@"(?:guid\s*:\s*)([0-9a-f]+)");
-        public static readonly Regex MatchTypeRegex = new Regex(@"(?:type\s*:\s*)([0-9])");
-
-        private static MatchedLine[] MatchFileText(string filePath)
-        {
-            List<MatchedLine> matchedLines = new List<MatchedLine>();
-            string[] lines = File.ReadAllLines(filePath);
-            for(int i = 0; i < lines.Length; i++)
-            {
-                MatchCollection matches = MatchRegex.Matches(lines[i]);
-                if(matches.Count > 0)
-                {
-                    GroupCollection groups = matches[0].Groups;
-                    matchedLines.Add(new MatchedLine()
-                    {
-                        filePath = filePath,
-                        lineIndex = i,
-                        fileID = long.Parse(groups[1].Value),
-                        guid = groups[2].Value,
-                        type = int.Parse(groups[3].Value)
-                    });
-                }
-            }
-            return matchedLines.ToArray();
-        }
-
-        private static void ReplaceWithNew(MatchedLine[] oris, long newFileID, string newGUID, int newType)
-        {
-            Dictionary<string, List<MatchedLine>> reorder = new Dictionary<string, List<MatchedLine>>();
-            for(int i = 0; i < oris.Length; i++)
-            {
-                MatchedLine matchedLine = oris[i];
-                if (!reorder.TryGetValue(matchedLine.filePath, out List<MatchedLine> matchLineList))
-                {
-                    reorder[matchedLine.filePath] = matchLineList = new List<MatchedLine>();
-                }
-                matchLineList.Add(matchedLine);
-            }
-            foreach(KeyValuePair<string, List<MatchedLine>> kv in reorder)
-            {
-                string filePath = kv.Key;
-                List<MatchedLine> list = kv.Value;
-                string[] lines = File.ReadAllLines(filePath);
-                for(int i = 0; i < list.Count; i++)
-                {
-                    MatchedLine matchedLine = list[i];
-                    string oriLine = lines[matchedLine.lineIndex];
-                    MatchFileIDRegex.Replace(oriLine, newFileID.ToString());
-                    MatchGUIDRegex.Replace(oriLine, newGUID);
-                    MatchTypeRegex.Replace(oriLine, newType.ToString());
-                }
-                //commit
-                File.WriteAllLines(filePath, lines);
-            }
-        }
-
-        public class MatchedLine
+        private struct MatchedLine
         {
             public string filePath;
 
-            public int lineIndex = -1;
+            public int lineIndex;
+
+            public string guid;
+
+            public long fileID;
+
+            public int type;
+        }
+
+        private struct FileIDInfo
+        {
+            public string filePath;
+
+            public int mainClassID;
 
             public long fileID;
 
@@ -616,46 +253,380 @@ namespace E.Editor
             public int type;
         }
 
-        //[MenuItem("Assets/Bundle/Test1")]
+        [MenuItem("Assets/Bundle/Test1")]
         private static void Test1()
         {
-            
+            //ExtractDefaultResources();
+
         }
 
-        private static readonly Regex HasReferencesRegex = new Regex(@"(?:\.unity)|(?:\.prefab)|(?:\.material)|(?:\.asset)");
+        private const string ParentFolderName = "Assets";
+        private const string ResourcesFolderName = "_extract_resources";
+        private const string CopyResourcesFolderName = "Library";
+        private const string BuildinResourcesIDsPath = "Library/BuildinResourcesIDs.txt";
 
-        //[MenuItem("Assets/Bundle/Test2")]
-        private static void Test2()
+        //[MenuItem("Assets/Bundle/Reference Build")]
+        public static void ReferenceBuild()
         {
-            MatchedLine[] matchedLines = MatchFileText(Path.Combine(Application.dataPath + "/Example/Res/Scenes/Scene01/Scene01.unity"));
-            Debug.Log(matchedLines.Length);
-            foreach(MatchedLine matchedLine in matchedLines)
-            {
-                string guid = AssetDatabase.GUIDToAssetPath(matchedLine.guid);
-                Debug.Log(guid);
-            }
-        }
-
-        [MenuItem("Assets/Bundle/Output Resources")]
-        public static void ExtractDefaultResources()
-        {
-            string[] resourcesGUIDs = GetResourcesGUIDs();
-            string ParentFolderName = "Assets";
-            string ResourcesFolderName = "_extract_resources";
-            string buildinResourcesIDsPath = "ProjectSettings/BuildinResourcesIDs.txt";
-            Regex FolderPathSplit = new Regex(@"\s*[\\/]+\s*");
-            Regex NameRegex = new Regex(@"[\s\\/]");
+            Regex MatchRegex = new Regex(@"\{\s*fileID\s*:\s*([0-9]+)\s*,\s*guid\s*:\s*([0-9a-f]+)\s*,\s*type\s*:\s*([0-9])\s*\}");
+            Regex MatchFileIDRegex = new Regex(@"(?:fileID\s*:\s*)([0-9]+)");
+            Regex MatchGUIDRegex = new Regex(@"(?:guid\s*:\s*)([0-9a-f]+)");
+            Regex MatchTypeRegex = new Regex(@"(?:type\s*:\s*)([0-9])");
+            Regex MatchClassIDAndFileIDInAssetRegex = new Regex(@"^(?:\s*---\s*!u!([0-9]+)\s*&([0-9]+)\s*)$");
+            Regex MatchGUIDInMetaRegex = new Regex(@"^(?:\s*guid\s*:\s*([0-9a-f]+))$");
+            Regex MatchAssetBundleName = new Regex(@"^(?:\s*assetBundleName\s*:\s*(\S*)\s*)$");
 
             Dictionary<string, Dictionary<long, string>> guid_fileID_extractPath_map = new Dictionary<string, Dictionary<long, string>>();
+            Action command = null;
 
-            foreach (string guid in resourcesGUIDs)
+            ExtractDefaultResources();
+            Execute();
+
+            void Execute()
             {
-                string resourcesPath = AssetDatabase.GUIDToAssetPath(guid);
-                UnityEngine.Object[] resources = AssetDatabase.LoadAllAssetsAtPath(resourcesPath);
-                RecordPath(resources);
-                CopyToFolder(resources);
+                try
+                {
+                    UnityEngine.Object[][] objectGrops = FindObjectGrops();
+                    FindReference(objectGrops);
+                    Task.Factory.StartNew(() =>
+                    {
+                        LoadRecordedPaths();
+
+                        command?.Invoke();
+                        Debug.Log("Asset bundle build complete.");
+                    });
+                }
+                catch(Exception e)
+                {
+                    Revert();
+                    Debug.Log("Asset bundle build faild.");
+                    throw e;
+                }
             }
-            SaveRecordedPaths();
+
+            void Revert()
+            {
+
+            }
+
+            UnityEngine.Object[][] FindObjectGrops()
+            {
+                ResetAllAssetBundleNames();
+                string[] abNames = AssetDatabase.GetAllAssetBundleNames();
+                List<UnityEngine.Object[]> objGrops = new List<UnityEngine.Object[]>();
+                foreach (string abName in abNames)
+                {
+                    string[] assetPaths = AssetDatabase.GetAssetPathsFromAssetBundle(abName);
+                    List<UnityEngine.Object> objGrop = new List<UnityEngine.Object>();
+                    foreach (string assetPath in assetPaths)
+                    {
+                        Type assetType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
+                        objGrop.Add(AssetDatabase.LoadAssetAtPath(assetPath, assetType));
+                    }
+                    objGrops.Add(objGrop.ToArray());
+                }
+                return objGrops.ToArray();
+            }
+
+            void FindReference(UnityEngine.Object[][] grops)
+            {
+                for(int i = 0; i < grops.Length; i++)
+                {
+                    int gropId = i;
+                    for(int j = 0; j < grops[i].Length; i++)
+                    {
+                        UnityEngine.Object obj = grops[i][j];
+                        Find(obj, gropId);
+                    }
+                }
+
+                void Find(UnityEngine.Object obj, int gropId)
+                {
+                    string assetPath = AssetDatabase.GetAssetPath(obj);
+                    
+
+                }
+
+                void GetObjectInfos(string assetPath)
+                {
+                    string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
+                    //guid from .meta
+                    string guid = GetGUID(assetPath);
+                    //fileID from asset
+
+                }
+            }
+
+            string GetGUID(string assetPath)
+            {
+                string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
+                string metaPath = absAssetPath + ".meta";
+                string[] lines = File.ReadAllLines(metaPath);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    MatchCollection matches = MatchGUIDInMetaRegex.Matches(lines[i]);
+                    if (matches.Count > 0)
+                    {
+                        GroupCollection groups = matches[0].Groups;
+                        string value = groups[1].Value;
+                        if (!string.IsNullOrWhiteSpace(value))
+                        {
+                            return value;
+                        }
+                    }
+                }
+                return null;
+            }
+
+            string[] GetFileIDs(string assetPath)
+            {
+                string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
+                string[] lines = File.ReadAllLines(absAssetPath);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    MatchCollection matches = MatchClassIDAndFileIDInAssetRegex.Matches(lines[i]);
+                    if (matches.Count > 0)
+                    {
+                        GroupCollection groups = matches[0].Groups;
+                        //TODO 
+                    }
+                }
+                return null;
+            }
+
+            void SetAssetBunldeName(string assetPath, string assetBundleName)
+            {
+                string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
+                string metaPath = absAssetPath + ".meta";
+                string[] lines = File.ReadAllLines(metaPath);
+                for(int i = 0; i < lines.Length; i++)
+                {
+                    if (MatchAssetBundleName.IsMatch(lines[i]))
+                    {
+                        lines[i] = "  assetBundleName: " + assetBundleName;
+                    }
+                }
+            }
+
+            string GetAssetBundleName(string assetPath)
+            {
+                string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
+                string metaPath = absAssetPath + ".meta";
+                string[] lines = File.ReadAllLines(metaPath);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    MatchCollection matches = MatchAssetBundleName.Matches(lines[i]);
+                    if (matches.Count > 0)
+                    {
+                        GroupCollection groups = matches[0].Groups;
+                        string value = groups[1].Value;
+                        if (!string.IsNullOrWhiteSpace(value))
+                        {
+                            return value;
+                        }
+                    }
+                }
+                return null;
+            }
+
+            MatchedLine[] MatchFileText(string filePath)
+            {
+                List<MatchedLine> matchedLines = new List<MatchedLine>();
+                string[] lines = File.ReadAllLines(filePath);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    MatchCollection matches = MatchRegex.Matches(lines[i]);
+                    if (matches.Count > 0)
+                    {
+                        GroupCollection groups = matches[0].Groups;
+                        matchedLines.Add(new MatchedLine()
+                        {
+                            filePath = filePath,
+                            lineIndex = i,
+                            fileID = long.Parse(groups[1].Value),
+                            guid = groups[2].Value,
+                            type = int.Parse(groups[3].Value)
+                        });
+                    }
+                }
+                return matchedLines.ToArray();
+            }
+
+            void ReplaceWithNew(MatchedLine[] oris, long newFileID, string newGUID, int newType)
+            {
+                Dictionary<string, List<MatchedLine>> reorder = new Dictionary<string, List<MatchedLine>>();
+                for (int i = 0; i < oris.Length; i++)
+                {
+                    MatchedLine matchedLine = oris[i];
+                    if (!reorder.TryGetValue(matchedLine.filePath, out List<MatchedLine> matchLineList))
+                    {
+                        reorder[matchedLine.filePath] = matchLineList = new List<MatchedLine>();
+                    }
+                    matchLineList.Add(matchedLine);
+                }
+                foreach (KeyValuePair<string, List<MatchedLine>> kv in reorder)
+                {
+                    string filePath = kv.Key;
+                    List<MatchedLine> list = kv.Value;
+                    string[] lines = File.ReadAllLines(filePath);
+                    for (int i = 0; i < list.Count; i++)
+                    {
+                        MatchedLine matchedLine = list[i];
+                        string oriLine = lines[matchedLine.lineIndex];
+                        MatchFileIDRegex.Replace(oriLine, "fileID: " + newFileID.ToString());
+                        MatchGUIDRegex.Replace(oriLine, "guid: " + newGUID);
+                        MatchTypeRegex.Replace(oriLine, "type: " + newType.ToString());
+                    }
+                    command += () =>
+                    {
+                        File.WriteAllLines(filePath, lines);
+                    };
+                }
+            }
+
+            void LoadRecordedPaths()
+            {
+                Regex KeyValueMatch = new Regex(@"^(?:\s*([\w]+(?:\s+\w+)*)\s*:\s*([\w]+(?:\s+\w+)*)\s*)$");
+                string filePath = Path.Combine(Environment.CurrentDirectory, BuildinResourcesIDsPath);
+                if (File.Exists(filePath))
+                {
+                    string[] lines = File.ReadAllLines(filePath);
+                    Dictionary<long, string> currGrop = null;
+                    foreach (string line in lines)
+                    {
+                        MatchCollection matchCollection = KeyValueMatch.Matches(line);
+                        if (matchCollection.Count > 0)
+                        {
+                            Match match = matchCollection[0];
+                            GroupCollection groups = match.Groups;
+                            string key = groups[1].Value;
+                            string value = groups[2].Value;
+                            if (!string.IsNullOrWhiteSpace(key))
+                            {
+                                if (string.IsNullOrWhiteSpace(value))
+                                {
+                                    currGrop = guid_fileID_extractPath_map[key] = new Dictionary<long, string>();
+                                }
+                                else
+                                {
+                                    currGrop[long.Parse(key)] = value;
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    throw new FileNotFoundException(BuildinResourcesIDsPath + " dosen't exist.");
+                }
+            }
+
+            string GetFormPathMap(string guid, long fileID)
+            {
+                if (guid_fileID_extractPath_map.TryGetValue(guid, out Dictionary<long, string> fileID_extractPath_map))
+                {
+                    if (fileID_extractPath_map.TryGetValue(fileID, out string value))
+                    {
+                        return value;
+                    }
+                }
+                return null;
+            }
+
+        }
+
+        public static void ExtractDefaultResources()
+        {
+            Regex AssetsFolderMatch = new Regex(@"^(?:Asset[\\/]).*");
+            Regex FolderPathSplit = new Regex(@"\s*[\\/]+\s*");
+            Regex NameRegex = new Regex(@"[\s\\/]");
+            Dictionary<string, Dictionary<long, string>> guid_fileID_extractPath_map = new Dictionary<string, Dictionary<long, string>>();
+            
+            if (Check())
+            {
+                Execute();
+            }
+            
+            bool Check()
+            {
+                string targetPath = Path.Combine(Environment.CurrentDirectory, CopyResourcesFolderName, ResourcesFolderName);
+                string buildinResourcesIDsPath = Path.Combine(Environment.CurrentDirectory, BuildinResourcesIDsPath);
+                if (!CheckVersion() ||
+                    !Directory.Exists(targetPath) || 
+                    !File.Exists(buildinResourcesIDsPath))
+                {
+                    return true;
+                }
+                return false;
+            }
+
+            bool CheckVersion()
+            {
+                string key = "_unity_buildin_resources_version_";
+                if (PlayerPrefs.HasKey(key))
+                {
+                    string unityVersion = Application.unityVersion;
+                    if (PlayerPrefs.GetString(key).Equals(unityVersion))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            void UpdateVersion()
+            {
+                string key = "_unity_buildin_resources_version_";
+                PlayerPrefs.SetString(key, Application.unityVersion);
+            }
+
+            void Execute()
+            {
+                try
+                {
+                    Revert();
+                    string[] resourcesGUIDs = GetResourcesGUIDs();
+                    foreach (string guid in resourcesGUIDs)
+                    {
+                        string resourcesPath = AssetDatabase.GUIDToAssetPath(guid);
+                        UnityEngine.Object[] resources = AssetDatabase.LoadAllAssetsAtPath(resourcesPath);
+                        if(resources != null && resources.Length > 0)
+                        {
+                            RecordPath(resources);
+                            CopyToFolder(resources);
+                        }
+                    }
+                    CopyResourcesFolder();
+                    SaveRecordedPaths();
+                    UpdateVersion();
+                    Debug.Log("Extract default resources complete.");
+                }
+                catch(Exception e)
+                {
+                    Revert();
+                    Debug.Log("Extract default resources faild.");
+                    throw e;
+                }
+            }
+
+            void Revert()
+            {
+                string resourcesPath = Path.Combine(Environment.CurrentDirectory, ParentFolderName, ResourcesFolderName);
+                string targetPath = Path.Combine(Environment.CurrentDirectory, CopyResourcesFolderName, ResourcesFolderName);
+                string buildinResourcesIDsPath = Path.Combine(Environment.CurrentDirectory, BuildinResourcesIDsPath);
+                if (Directory.Exists(targetPath))
+                {
+                    Directory.Delete(targetPath, true);
+                }
+                if (Directory.Exists(resourcesPath))
+                {
+                    AssetDatabase.DeleteAsset(Path.Combine(ParentFolderName, ResourcesFolderName));
+                }
+                if(File.Exists(buildinResourcesIDsPath))
+                {
+                    File.Delete(buildinResourcesIDsPath);
+                }
+            }
 
             string[] GetResourcesGUIDs()
             {
@@ -688,29 +659,79 @@ namespace E.Editor
                 {
                     UnityEngine.Object asset = resources[i];
                     Type assetType = asset.GetType();
-                    if(AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out string guid, out long localID))
+                    if(assetType != typeof(MonoScript))
                     {
-                        string extractPath = Path.Combine(ParentFolderName, ResourcesFolderName, assetType.Name, ConvertName(asset.name) + ".asset");
-                        AddToPathMap(guid, localID, extractPath);
+                        if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out string guid, out long localID))
+                        {
+                            string extractPath = Path.Combine(assetType.Name, ConvertName(asset.name));
+                            AddToPathMap(guid, localID, extractPath);
+                        }
                     }
                 }
             }
+
+            void CopyResourcesFolder()
+            {
+                string resourcesPath = Path.Combine(Environment.CurrentDirectory, ParentFolderName, ResourcesFolderName);
+                string targetPath = Path.Combine(Environment.CurrentDirectory, CopyResourcesFolderName, ResourcesFolderName);
+                if (Directory.Exists(targetPath))
+                {
+                    Directory.Delete(targetPath, true);
+                }
+                if (Directory.Exists(resourcesPath))
+                {
+                    CopyDirectory(resourcesPath, targetPath, true);
+                    AssetDatabase.DeleteAsset(Path.Combine(ParentFolderName, ResourcesFolderName));
+                }
+                void CopyDirectory(string SourcePath, string DestinationPath, bool overwriteexisting)
+                {
+                    try
+                    {
+                        SourcePath = SourcePath.EndsWith(@"\") ? SourcePath : SourcePath + @"\";
+                        DestinationPath = DestinationPath.EndsWith(@"\") ? DestinationPath : DestinationPath + @"\";
+                        if (Directory.Exists(SourcePath))
+                        {
+                            if (!Directory.Exists(DestinationPath))
+                            {
+                                Directory.CreateDirectory(DestinationPath);
+                            }
+                            foreach (string fls in Directory.GetFiles(SourcePath))
+                            {
+                                FileInfo flinfo = new FileInfo(fls);
+                                flinfo.CopyTo(DestinationPath + flinfo.Name, overwriteexisting);
+                            }
+                            foreach (string drs in Directory.GetDirectories(SourcePath))
+                            {
+                                DirectoryInfo drinfo = new DirectoryInfo(drs);
+                                CopyDirectory(drs, DestinationPath + drinfo.Name, overwriteexisting);
+                            }
+                        }
+                    }
+                    catch (IOException e)
+                    {
+                        throw e;
+                    }
+                }
+            }
+
+            
 
             void SaveRecordedPaths()
             {
-                foreach(KeyValuePair<string, Dictionary<long, string>> kv in guid_fileID_extractPath_map)
+                if(guid_fileID_extractPath_map.Count > 0)
                 {
-                    Debug.Log("========================================");
-                    foreach(KeyValuePair<long, string> kvvkv in kv.Value)
+                    StringBuilder sb = new StringBuilder();
+                    foreach (KeyValuePair<string, Dictionary<long, string>> kv in guid_fileID_extractPath_map)
                     {
-                        Debug.Log(kvvkv.Key + "    " + kvvkv.Value);
+                        sb.AppendLine(kv.Key + ":");
+                        foreach (KeyValuePair<long, string> kvvkv in kv.Value)
+                        {
+                            sb.AppendLine("  " + kvvkv.Key + ": " + kvvkv.Value);
+                        }
                     }
+                    string text = sb.ToString();
+                    File.WriteAllText(Path.Combine(Environment.CurrentDirectory, BuildinResourcesIDsPath), text);
                 }
-            }
-
-            void LoadRecordedPaths()
-            {
-
             }
 
             void AddToPathMap(string guid, long fileID, string extractPath)
@@ -720,18 +741,6 @@ namespace E.Editor
                     guid_fileID_extractPath_map[guid] = fileID_extractPath_map = new Dictionary<long, string>();
                 }
                 fileID_extractPath_map[fileID] = extractPath;
-            }
-
-            string GetFormPathMap(string guid, long fileID)
-            {
-                if (guid_fileID_extractPath_map.TryGetValue(guid, out Dictionary<long, string> fileID_extractPath_map))
-                {
-                    if (fileID_extractPath_map.TryGetValue(fileID, out string value))
-                    {
-                        return value;
-                    }
-                }
-                return null;
             }
 
             void CopyToFolder(UnityEngine.Object[] resources)
@@ -744,7 +753,8 @@ namespace E.Editor
                     {
                         string folderPath = Path.Combine(ParentFolderName, ResourcesFolderName, assetType.Name);
                         string filePath = Path.Combine(folderPath, ConvertName(asset.name) + ".asset");
-                        if (File.Exists(Path.Combine(Application.dataPath, filePath.Remove(0, ParentFolderName.Length + 1))))
+                        string sysFilePath = Path.Combine(Environment.CurrentDirectory, filePath);
+                        if (File.Exists(sysFilePath))
                         {
                             AssetDatabase.DeleteAsset(filePath);
                         }
@@ -762,45 +772,57 @@ namespace E.Editor
 
             void CreateExtractFolder(string folderPath)
             {
-                string[] folders = FolderPathSplit.Split(folderPath);
-                if(folders.Length > 0)
+                if (AssetsFolderMatch.IsMatch(folderPath))
                 {
-                    string parentPath = null;
-                    for (int i = 0; i < folders.Length; i++)
+                    string[] folders = FolderPathSplit.Split(folderPath);
+                    if (folders.Length > 0)
                     {
-                        string folder = folders[i];
-                        if (!string.IsNullOrWhiteSpace(folder))
+                        string parentPath = null;
+                        for (int i = 0; i < folders.Length; i++)
                         {
-                            if(parentPath != null)
+                            string folder = folders[i];
+                            if (!string.IsNullOrWhiteSpace(folder))
                             {
-                                string currFolderPath = Path.Combine(parentPath, folder);
-                                if (!AssetDatabase.IsValidFolder(currFolderPath))
+                                if (parentPath != null)
                                 {
-                                    AssetDatabase.CreateFolder(parentPath, folder);
+                                    string currFolderPath = Path.Combine(parentPath, folder);
+                                    if (!AssetDatabase.IsValidFolder(currFolderPath))
+                                    {
+                                        AssetDatabase.CreateFolder(parentPath, folder);
+                                    }
+                                    parentPath = currFolderPath;
                                 }
-                                parentPath = currFolderPath;
-                            }
-                            else
-                            {
-                                parentPath = folder;
+                                else
+                                {
+                                    parentPath = folder;
+                                }
                             }
                         }
+                    }
+                }
+                else
+                {
+                    folderPath = Path.Combine(Environment.CurrentDirectory, folderPath);
+                    if (!Directory.Exists(folderPath))
+                    {
+                        Directory.CreateDirectory(folderPath);
                     }
                 }
             }
 
             UnityEngine.Object CloneAsset(UnityEngine.Object asset , Type type)
             {
+                UnityEngine.Object clone;
                 if (type.BaseType == typeof(Texture))
                 {
-                    return CloneTexture(asset);
+                    clone = CloneTexture(asset);
                 }
                 else
                 {
-                    UnityEngine.Object clone = UnityEngine.Object.Instantiate(asset);
-                    clone.name = asset.name;
-                    return clone;
+                    clone = UnityEngine.Object.Instantiate(asset);
                 }
+                clone.name = asset.name;
+                return clone;
 
                 UnityEngine.Object CloneTexture(UnityEngine.Object obj)
                 {
@@ -811,14 +833,13 @@ namespace E.Editor
                     isReadableProperty.boolValue = true;
                     serializedObject.ApplyModifiedProperties();
                     serializedObject.Dispose();
-                    UnityEngine.Object clone = UnityEngine.Object.Instantiate(obj);
-                    clone.name = asset.name;
-                    SerializedObject serializedClone = new SerializedObject(clone);
+                    UnityEngine.Object obj0 = UnityEngine.Object.Instantiate(obj);
+                    SerializedObject serializedClone = new SerializedObject(obj0);
                     serializedClone.Update();
                     serializedClone.FindProperty("m_IsReadable").boolValue = isReadable;
                     serializedClone.ApplyModifiedProperties();
                     serializedClone.Dispose();
-                    return clone;
+                    return obj0;
                 }
             }
 
