@@ -227,313 +227,353 @@ namespace E.Editor
             Debug.Log("Asset bundle build complete");
         }
 
-        private struct MatchedLine
-        {
-            public string filePath;
+        //private struct MatchedLine
+        //{
+        //    public string filePath;
 
-            public int lineIndex;
+        //    public int lineIndex;
 
-            public string guid;
+        //    public string guid;
 
-            public long fileID;
+        //    public long fileID;
 
-            public int type;
-        }
+        //    public int type;
+        //}
 
-        private struct FileIDInfo
-        {
-            public string filePath;
+        //private struct FileIDInfo
+        //{
+        //    public string filePath;
 
-            public int mainClassID;
+        //    public int mainClassID;
 
-            public long fileID;
+        //    public long fileID;
 
-            public string guid;
+        //    public string guid;
 
-            public int type;
-        }
+        //    public int type;
+        //}
 
-        [MenuItem("Assets/Bundle/Test1")]
-        private static void Test1()
-        {
-            //ExtractDefaultResources();
+        //private class FileYMALInfo
+        //{
+        //    public struct Menber
+        //    {
+        //        public int classID;
 
-        }
+        //        public long fileID;
+
+        //        public Reference[] references;
+        //    }
+
+        //    public struct Reference
+        //    {
+        //        public FileYMALInfo target;
+
+        //        public string line;
+        //    }
+
+        //    //file path
+        //    public string path;
+
+        //    //file guid
+        //    public string guid;
+
+        //    //file type
+        //    public int type;
+
+        //    //the main asset in this file, null if this asset is scene 
+        //    public Menber main;
+
+        //    //all assets in this file
+        //    public Menber[] menbers;
+        //}
+
+        //[MenuItem("Assets/Bundle/Test1")]
+        //private static void Test1()
+        //{
+        //    //ExtractDefaultResources();
+
+        //}
 
         private const string ParentFolderName = "Assets";
         private const string ResourcesFolderName = "_extract_resources";
         private const string CopyResourcesFolderName = "Library";
         private const string BuildinResourcesIDsPath = "Library/BuildinResourcesIDs.txt";
 
-        //[MenuItem("Assets/Bundle/Reference Build")]
-        public static void ReferenceBuild()
-        {
-            Regex MatchRegex = new Regex(@"\{\s*fileID\s*:\s*([0-9]+)\s*,\s*guid\s*:\s*([0-9a-f]+)\s*,\s*type\s*:\s*([0-9])\s*\}");
-            Regex MatchFileIDRegex = new Regex(@"(?:fileID\s*:\s*)([0-9]+)");
-            Regex MatchGUIDRegex = new Regex(@"(?:guid\s*:\s*)([0-9a-f]+)");
-            Regex MatchTypeRegex = new Regex(@"(?:type\s*:\s*)([0-9])");
-            Regex MatchClassIDAndFileIDInAssetRegex = new Regex(@"^(?:\s*---\s*!u!([0-9]+)\s*&([0-9]+)\s*)$");
-            Regex MatchGUIDInMetaRegex = new Regex(@"^(?:\s*guid\s*:\s*([0-9a-f]+))$");
-            Regex MatchAssetBundleName = new Regex(@"^(?:\s*assetBundleName\s*:\s*(\S*)\s*)$");
+        ////[MenuItem("Assets/Bundle/Reference Build")]
+        //public static void ReferenceBuild()
+        //{
+        //    Regex MatchRegex = new Regex(@"\{\s*fileID\s*:\s*([0-9]+)\s*,\s*guid\s*:\s*([0-9a-f]+)\s*,\s*type\s*:\s*([0-9])\s*\}");
+        //    Regex MatchFileIDRegex = new Regex(@"(?:fileID\s*:\s*)([0-9]+)");
+        //    Regex MatchGUIDRegex = new Regex(@"(?:guid\s*:\s*)([0-9a-f]+)");
+        //    Regex MatchTypeRegex = new Regex(@"(?:type\s*:\s*)([0-9])");
+        //    Regex MatchClassIDAndFileIDInAssetRegex = new Regex(@"^(?:\s*---\s*!u!([0-9]+)\s*&([0-9]+)\s*)$");
+        //    Regex MatchGUIDInMetaRegex = new Regex(@"^(?:\s*guid\s*:\s*([0-9a-f]+))$");
+        //    Regex MatchAssetBundleName = new Regex(@"^(?:\s*assetBundleName\s*:\s*(\S*)\s*)$");
 
-            Dictionary<string, Dictionary<long, string>> guid_fileID_extractPath_map = new Dictionary<string, Dictionary<long, string>>();
-            Action command = null;
+        //    Dictionary<string, Dictionary<long, string>> guid_fileID_extractPath_map = new Dictionary<string, Dictionary<long, string>>();
+        //    Action command = null;
 
-            ExtractDefaultResources();
-            Execute();
+        //    ExtractDefaultResources();
+        //    Execute();
 
-            void Execute()
-            {
-                try
-                {
-                    UnityEngine.Object[][] objectGrops = FindObjectGrops();
-                    FindReference(objectGrops);
-                    Task.Factory.StartNew(() =>
-                    {
-                        LoadRecordedPaths();
+        //    void Execute()
+        //    {
+        //        try
+        //        {
+        //            UnityEngine.Object[][] objectGrops = FindObjectGrops();
+        //            FindReference(objectGrops);
+        //            Task.Factory.StartNew(() =>
+        //            {
+        //                LoadRecordedPaths();
 
-                        command?.Invoke();
-                        Debug.Log("Asset bundle build complete.");
-                    });
-                }
-                catch(Exception e)
-                {
-                    Revert();
-                    Debug.Log("Asset bundle build faild.");
-                    throw e;
-                }
-            }
+        //                command?.Invoke();
+        //                Debug.Log("Asset bundle build complete.");
+        //            });
+        //        }
+        //        catch(Exception e)
+        //        {
+        //            Revert();
+        //            Debug.Log("Asset bundle build faild.");
+        //            throw e;
+        //        }
+        //    }
 
-            void Revert()
-            {
+        //    void Revert()
+        //    {
 
-            }
+        //    }
 
-            UnityEngine.Object[][] FindObjectGrops()
-            {
-                ResetAllAssetBundleNames();
-                string[] abNames = AssetDatabase.GetAllAssetBundleNames();
-                List<UnityEngine.Object[]> objGrops = new List<UnityEngine.Object[]>();
-                foreach (string abName in abNames)
-                {
-                    string[] assetPaths = AssetDatabase.GetAssetPathsFromAssetBundle(abName);
-                    List<UnityEngine.Object> objGrop = new List<UnityEngine.Object>();
-                    foreach (string assetPath in assetPaths)
-                    {
-                        Type assetType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
-                        objGrop.Add(AssetDatabase.LoadAssetAtPath(assetPath, assetType));
-                    }
-                    objGrops.Add(objGrop.ToArray());
-                }
-                return objGrops.ToArray();
-            }
+        //    UnityEngine.Object[][] FindObjectGrops()
+        //    {
+        //        ResetAllAssetBundleNames();
+        //        string[] abNames = AssetDatabase.GetAllAssetBundleNames();
+        //        List<UnityEngine.Object[]> objGrops = new List<UnityEngine.Object[]>();
+        //        foreach (string abName in abNames)
+        //        {
+        //            string[] assetPaths = AssetDatabase.GetAssetPathsFromAssetBundle(abName);
+        //            List<UnityEngine.Object> objGrop = new List<UnityEngine.Object>();
+        //            foreach (string assetPath in assetPaths)
+        //            {
+        //                Type assetType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
+        //                objGrop.Add(AssetDatabase.LoadAssetAtPath(assetPath, assetType));
+        //            }
+        //            objGrops.Add(objGrop.ToArray());
+        //        }
+        //        return objGrops.ToArray();
+        //    }
 
-            void FindReference(UnityEngine.Object[][] grops)
-            {
-                for(int i = 0; i < grops.Length; i++)
-                {
-                    int gropId = i;
-                    for(int j = 0; j < grops[i].Length; i++)
-                    {
-                        UnityEngine.Object obj = grops[i][j];
-                        Find(obj, gropId);
-                    }
-                }
+        //    void FindReference(UnityEngine.Object[][] grops)
+        //    {
+        //        for(int i = 0; i < grops.Length; i++)
+        //        {
+        //            int gropId = i;
+        //            for(int j = 0; j < grops[i].Length; i++)
+        //            {
+        //                UnityEngine.Object obj = grops[i][j];
+        //                Find(obj, gropId);
+        //            }
+        //        }
 
-                void Find(UnityEngine.Object obj, int gropId)
-                {
-                    string assetPath = AssetDatabase.GetAssetPath(obj);
-                    
+        //        void Find(UnityEngine.Object obj, int gropId)
+        //        {
+        //            string assetPath = AssetDatabase.GetAssetPath(obj);
 
-                }
 
-                void GetObjectInfos(string assetPath)
-                {
-                    string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
-                    //guid from .meta
-                    string guid = GetGUID(assetPath);
-                    //fileID from asset
+        //        }
 
-                }
-            }
+        //        void GetObjectInfos(string assetPath)
+        //        {
+        //            string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
+        //            //guid from .meta
+        //            string guid = GetGUID(assetPath);
+        //            //fileID from asset
 
-            string GetGUID(string assetPath)
-            {
-                string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
-                string metaPath = absAssetPath + ".meta";
-                string[] lines = File.ReadAllLines(metaPath);
-                for (int i = 0; i < lines.Length; i++)
-                {
-                    MatchCollection matches = MatchGUIDInMetaRegex.Matches(lines[i]);
-                    if (matches.Count > 0)
-                    {
-                        GroupCollection groups = matches[0].Groups;
-                        string value = groups[1].Value;
-                        if (!string.IsNullOrWhiteSpace(value))
-                        {
-                            return value;
-                        }
-                    }
-                }
-                return null;
-            }
+        //        }
+        //    }
 
-            string[] GetFileIDs(string assetPath)
-            {
-                string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
-                string[] lines = File.ReadAllLines(absAssetPath);
-                for (int i = 0; i < lines.Length; i++)
-                {
-                    MatchCollection matches = MatchClassIDAndFileIDInAssetRegex.Matches(lines[i]);
-                    if (matches.Count > 0)
-                    {
-                        GroupCollection groups = matches[0].Groups;
-                        //TODO 
-                    }
-                }
-                return null;
-            }
+        //    bool IsYMALFile(string assetPath)
+        //    {
 
-            void SetAssetBunldeName(string assetPath, string assetBundleName)
-            {
-                string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
-                string metaPath = absAssetPath + ".meta";
-                string[] lines = File.ReadAllLines(metaPath);
-                for(int i = 0; i < lines.Length; i++)
-                {
-                    if (MatchAssetBundleName.IsMatch(lines[i]))
-                    {
-                        lines[i] = "  assetBundleName: " + assetBundleName;
-                    }
-                }
-            }
+        //        return true;
+        //    }
 
-            string GetAssetBundleName(string assetPath)
-            {
-                string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
-                string metaPath = absAssetPath + ".meta";
-                string[] lines = File.ReadAllLines(metaPath);
-                for (int i = 0; i < lines.Length; i++)
-                {
-                    MatchCollection matches = MatchAssetBundleName.Matches(lines[i]);
-                    if (matches.Count > 0)
-                    {
-                        GroupCollection groups = matches[0].Groups;
-                        string value = groups[1].Value;
-                        if (!string.IsNullOrWhiteSpace(value))
-                        {
-                            return value;
-                        }
-                    }
-                }
-                return null;
-            }
+        //    string GetGUID(string assetPath)
+        //    {
+        //        string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
+        //        string metaPath = absAssetPath + ".meta";
+        //        string[] lines = File.ReadAllLines(metaPath);
+        //        for (int i = 0; i < lines.Length; i++)
+        //        {
+        //            MatchCollection matches = MatchGUIDInMetaRegex.Matches(lines[i]);
+        //            if (matches.Count > 0)
+        //            {
+        //                GroupCollection groups = matches[0].Groups;
+        //                string value = groups[1].Value;
+        //                if (!string.IsNullOrWhiteSpace(value))
+        //                {
+        //                    return value;
+        //                }
+        //            }
+        //        }
+        //        return null;
+        //    }
 
-            MatchedLine[] MatchFileText(string filePath)
-            {
-                List<MatchedLine> matchedLines = new List<MatchedLine>();
-                string[] lines = File.ReadAllLines(filePath);
-                for (int i = 0; i < lines.Length; i++)
-                {
-                    MatchCollection matches = MatchRegex.Matches(lines[i]);
-                    if (matches.Count > 0)
-                    {
-                        GroupCollection groups = matches[0].Groups;
-                        matchedLines.Add(new MatchedLine()
-                        {
-                            filePath = filePath,
-                            lineIndex = i,
-                            fileID = long.Parse(groups[1].Value),
-                            guid = groups[2].Value,
-                            type = int.Parse(groups[3].Value)
-                        });
-                    }
-                }
-                return matchedLines.ToArray();
-            }
+        //    string[] GetFileIDs(string assetPath)
+        //    {
+        //        string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
+        //        string[] lines = File.ReadAllLines(absAssetPath);
+        //        for (int i = 0; i < lines.Length; i++)
+        //        {
+        //            MatchCollection matches = MatchClassIDAndFileIDInAssetRegex.Matches(lines[i]);
+        //            if (matches.Count > 0)
+        //            {
+        //                GroupCollection groups = matches[0].Groups;
+        //                //TODO 
+        //            }
+        //        }
+        //        return null;
+        //    }
 
-            void ReplaceWithNew(MatchedLine[] oris, long newFileID, string newGUID, int newType)
-            {
-                Dictionary<string, List<MatchedLine>> reorder = new Dictionary<string, List<MatchedLine>>();
-                for (int i = 0; i < oris.Length; i++)
-                {
-                    MatchedLine matchedLine = oris[i];
-                    if (!reorder.TryGetValue(matchedLine.filePath, out List<MatchedLine> matchLineList))
-                    {
-                        reorder[matchedLine.filePath] = matchLineList = new List<MatchedLine>();
-                    }
-                    matchLineList.Add(matchedLine);
-                }
-                foreach (KeyValuePair<string, List<MatchedLine>> kv in reorder)
-                {
-                    string filePath = kv.Key;
-                    List<MatchedLine> list = kv.Value;
-                    string[] lines = File.ReadAllLines(filePath);
-                    for (int i = 0; i < list.Count; i++)
-                    {
-                        MatchedLine matchedLine = list[i];
-                        string oriLine = lines[matchedLine.lineIndex];
-                        MatchFileIDRegex.Replace(oriLine, "fileID: " + newFileID.ToString());
-                        MatchGUIDRegex.Replace(oriLine, "guid: " + newGUID);
-                        MatchTypeRegex.Replace(oriLine, "type: " + newType.ToString());
-                    }
-                    command += () =>
-                    {
-                        File.WriteAllLines(filePath, lines);
-                    };
-                }
-            }
+        //    void SetAssetBunldeName(string assetPath, string assetBundleName)
+        //    {
+        //        string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
+        //        string metaPath = absAssetPath + ".meta";
+        //        string[] lines = File.ReadAllLines(metaPath);
+        //        for(int i = 0; i < lines.Length; i++)
+        //        {
+        //            if (MatchAssetBundleName.IsMatch(lines[i]))
+        //            {
+        //                lines[i] = "  assetBundleName: " + assetBundleName;
+        //            }
+        //        }
+        //    }
 
-            void LoadRecordedPaths()
-            {
-                Regex KeyValueMatch = new Regex(@"^(?:\s*([\w]+(?:\s+\w+)*)\s*:\s*([\w]+(?:\s+\w+)*)\s*)$");
-                string filePath = Path.Combine(Environment.CurrentDirectory, BuildinResourcesIDsPath);
-                if (File.Exists(filePath))
-                {
-                    string[] lines = File.ReadAllLines(filePath);
-                    Dictionary<long, string> currGrop = null;
-                    foreach (string line in lines)
-                    {
-                        MatchCollection matchCollection = KeyValueMatch.Matches(line);
-                        if (matchCollection.Count > 0)
-                        {
-                            Match match = matchCollection[0];
-                            GroupCollection groups = match.Groups;
-                            string key = groups[1].Value;
-                            string value = groups[2].Value;
-                            if (!string.IsNullOrWhiteSpace(key))
-                            {
-                                if (string.IsNullOrWhiteSpace(value))
-                                {
-                                    currGrop = guid_fileID_extractPath_map[key] = new Dictionary<long, string>();
-                                }
-                                else
-                                {
-                                    currGrop[long.Parse(key)] = value;
-                                }
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    throw new FileNotFoundException(BuildinResourcesIDsPath + " dosen't exist.");
-                }
-            }
+        //    string GetAssetBundleName(string assetPath)
+        //    {
+        //        string absAssetPath = Path.Combine(Environment.CurrentDirectory, assetPath);
+        //        string metaPath = absAssetPath + ".meta";
+        //        string[] lines = File.ReadAllLines(metaPath);
+        //        for (int i = 0; i < lines.Length; i++)
+        //        {
+        //            MatchCollection matches = MatchAssetBundleName.Matches(lines[i]);
+        //            if (matches.Count > 0)
+        //            {
+        //                GroupCollection groups = matches[0].Groups;
+        //                string value = groups[1].Value;
+        //                if (!string.IsNullOrWhiteSpace(value))
+        //                {
+        //                    return value;
+        //                }
+        //            }
+        //        }
+        //        return null;
+        //    }
 
-            string GetFormPathMap(string guid, long fileID)
-            {
-                if (guid_fileID_extractPath_map.TryGetValue(guid, out Dictionary<long, string> fileID_extractPath_map))
-                {
-                    if (fileID_extractPath_map.TryGetValue(fileID, out string value))
-                    {
-                        return value;
-                    }
-                }
-                return null;
-            }
+        //    MatchedLine[] MatchFileText(string filePath)
+        //    {
+        //        List<MatchedLine> matchedLines = new List<MatchedLine>();
+        //        string[] lines = File.ReadAllLines(filePath);
+        //        for (int i = 0; i < lines.Length; i++)
+        //        {
+        //            MatchCollection matches = MatchRegex.Matches(lines[i]);
+        //            if (matches.Count > 0)
+        //            {
+        //                GroupCollection groups = matches[0].Groups;
+        //                matchedLines.Add(new MatchedLine()
+        //                {
+        //                    filePath = filePath,
+        //                    lineIndex = i,
+        //                    fileID = long.Parse(groups[1].Value),
+        //                    guid = groups[2].Value,
+        //                    type = int.Parse(groups[3].Value)
+        //                });
+        //            }
+        //        }
+        //        return matchedLines.ToArray();
+        //    }
 
-        }
+        //    void ReplaceWithNew(MatchedLine[] oris, long newFileID, string newGUID, int newType)
+        //    {
+        //        Dictionary<string, List<MatchedLine>> reorder = new Dictionary<string, List<MatchedLine>>();
+        //        for (int i = 0; i < oris.Length; i++)
+        //        {
+        //            MatchedLine matchedLine = oris[i];
+        //            if (!reorder.TryGetValue(matchedLine.filePath, out List<MatchedLine> matchLineList))
+        //            {
+        //                reorder[matchedLine.filePath] = matchLineList = new List<MatchedLine>();
+        //            }
+        //            matchLineList.Add(matchedLine);
+        //        }
+        //        foreach (KeyValuePair<string, List<MatchedLine>> kv in reorder)
+        //        {
+        //            string filePath = kv.Key;
+        //            List<MatchedLine> list = kv.Value;
+        //            string[] lines = File.ReadAllLines(filePath);
+        //            for (int i = 0; i < list.Count; i++)
+        //            {
+        //                MatchedLine matchedLine = list[i];
+        //                string oriLine = lines[matchedLine.lineIndex];
+        //                MatchFileIDRegex.Replace(oriLine, "fileID: " + newFileID.ToString());
+        //                MatchGUIDRegex.Replace(oriLine, "guid: " + newGUID);
+        //                MatchTypeRegex.Replace(oriLine, "type: " + newType.ToString());
+        //            }
+        //            command += () =>
+        //            {
+        //                File.WriteAllLines(filePath, lines);
+        //            };
+        //        }
+        //    }
+
+        //    void LoadRecordedPaths()
+        //    {
+        //        Regex KeyValueMatch = new Regex(@"^(?:\s*([\w]+(?:\s+\w+)*)\s*:\s*([\w]+(?:\s+\w+)*)\s*)$");
+        //        string filePath = Path.Combine(Environment.CurrentDirectory, BuildinResourcesIDsPath);
+        //        if (File.Exists(filePath))
+        //        {
+        //            string[] lines = File.ReadAllLines(filePath);
+        //            Dictionary<long, string> currGrop = null;
+        //            foreach (string line in lines)
+        //            {
+        //                MatchCollection matchCollection = KeyValueMatch.Matches(line);
+        //                if (matchCollection.Count > 0)
+        //                {
+        //                    Match match = matchCollection[0];
+        //                    GroupCollection groups = match.Groups;
+        //                    string key = groups[1].Value;
+        //                    string value = groups[2].Value;
+        //                    if (!string.IsNullOrWhiteSpace(key))
+        //                    {
+        //                        if (string.IsNullOrWhiteSpace(value))
+        //                        {
+        //                            currGrop = guid_fileID_extractPath_map[key] = new Dictionary<long, string>();
+        //                        }
+        //                        else
+        //                        {
+        //                            currGrop[long.Parse(key)] = value;
+        //                        }
+        //                    }
+        //                }
+        //            }
+        //        }
+        //        else
+        //        {
+        //            throw new FileNotFoundException(BuildinResourcesIDsPath + " dosen't exist.");
+        //        }
+        //    }
+
+        //    string GetFormPathMap(string guid, long fileID)
+        //    {
+        //        if (guid_fileID_extractPath_map.TryGetValue(guid, out Dictionary<long, string> fileID_extractPath_map))
+        //        {
+        //            if (fileID_extractPath_map.TryGetValue(fileID, out string value))
+        //            {
+        //                return value;
+        //            }
+        //        }
+        //        return null;
+        //    }
+
+        //}
 
         public static void ExtractDefaultResources()
         {

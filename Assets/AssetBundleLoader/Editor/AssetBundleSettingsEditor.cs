@@ -104,6 +104,7 @@ namespace E.Editor
 
             public void Draw()
             {
+                EditorGUI.BeginChangeCheck();
                 EditorGUILayout.BeginVertical("HelpBox");
                 EditorGUILayout.BeginVertical("HelpBox");
                 //Build Target
@@ -167,6 +168,11 @@ namespace E.Editor
                 EditorGUI.indentLevel--;
                 EditorGUILayout.EndVertical();
                 EditorGUILayout.EndVertical();
+                if (EditorGUI.EndChangeCheck())
+                {
+                    EditorUtility.SetDirty(AssetBundleSettings.Instance);
+                    AssetDatabase.SaveAssets();
+                }
             }
         }
         
