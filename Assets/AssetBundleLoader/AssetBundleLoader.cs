@@ -439,6 +439,8 @@ namespace E
                 }
             };
         }
+        
+        
 
         /// <summary>
         /// Load an asset bundle builded by E.Editor.AssetBundleBuilder
@@ -448,15 +450,40 @@ namespace E
         /// <param name="callback">Callback at the end, null parameter if loading faild</param>
         public static void LoadAssetBundle(string path, System.Action<AssetBundle> callback)
         {
+            LoadAssetBundle0(path, callback, new Dictionary<string, bool>());
+        }
+
+        private static void LoadAssetBundle0(string path, System.Action<AssetBundle> callback, Dictionary<string, bool> marked)
+        {
             string bundleName = AssetBundlePath.DirectoryToBundleName(path);
             if (LoadingBundle.TryGetLoaded(bundleName, out AssetBundle bundle))
             {
                 callback?.Invoke(bundle);
                 return;
             }
+            lock (marked)
+            {
+                if (!marked.ContainsKey(bundleName))
+                {
+                    marked.Add(bundleName, true);
+                }
+            }
             LoadingManifest.GetManifest((AssetBundleManifest manifest) =>
             {
                 string[] dependencies = manifest.GetAllDependencies(bundleName);
+                lock (marked)
+                {
+                    List<string> newDependencies = new List<string>();
+                    for (int i = 0; i < dependencies.Length; i++)
+                    {
+                        string thisDep = dependencies[i];
+                        if (!marked.ContainsKey(thisDep))
+                        {
+                            newDependencies.Add(thisDep);
+                        }
+                    }
+                    dependencies = newDependencies.ToArray();
+                }
                 int count = dependencies.Length;
                 LoadingBundle.GetLoadingBundle(bundleName).InitProgress(count);
                 if (dependencies != null && count > 0)
@@ -464,8 +491,9 @@ namespace E
                     List<LoadingBundle> deps = new List<LoadingBundle>();
                     foreach (string dependBundleName in dependencies)
                     {
+                        AssetBundleLoaderDebug.Log("[" + bundleName + "] depend: [" + dependBundleName + "]");
                         deps.Add(LoadingBundle.GetLoadingBundle(dependBundleName));
-                        LoadAssetBundle(dependBundleName, (AssetBundle dependBundle) =>
+                        LoadAssetBundle0(dependBundleName, (AssetBundle dependBundle) =>
                         {
                             lock (dependencies)
                             {
@@ -475,7 +503,7 @@ namespace E
                             {
                                 LoadingBundle.EnterLoader(bundleName, callback, deps);
                             }
-                        });
+                        }, marked);
                     }
                 }
                 else
@@ -642,6 +670,11 @@ namespace E
             private System.Action<AssetBundle> callbacks;
 
             private bool loading = false;
+            
+            public bool IsLoading()
+            {
+                return loading;
+            }
 
             #region progress
             private class EState : State
