@@ -12,17 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dc7d38d021a52c148af8182477bd260b, type: 3}
   m_Name: AssetBundleSettings
   m_EditorClassIdentifier: 
-  buildTarget: 19
-  compressed: 0
-  outputPath: '%APPLICATION_PATH%/Output/Windows/%PRODUCT_NAME%/Data'
+  buildTarget: 13
+  compressed: 256
+  outputPath: '%APPLICATION_PATH%/Assets/StreamingAssets'
   resourceFolders:
   - path: Example/Res
-  buildTargetName: StandaloneWindows64
+  buildTargetName: Android
   readPath:
-    pathType: 0
+    pathType: 1
     custom: '%APPLICATION_PATH%/Output/Windows/%PRODUCT_NAME%'
-    subpath: Data
-  useWebRequest: 0
+    subpath: 
+  useWebRequest: 1
   simulateInEditor: 1
   logCommon: 0
   logError: 1

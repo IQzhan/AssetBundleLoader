@@ -1,0 +1,16 @@
+ManifestFileVersion: 0
+CRC: 2600388093
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: f6189c9a8e042fcc3868393a1b16eaef
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 525b72fdacf3aef7d65f355ad8f17a96
+HashAppended: 0
+ClassTypes:
+- Class: 28
+  Script: {instanceID: 0}
+Assets:
+- Assets/Example/Res/Textures/_0201119.jpg
+Dependencies: []

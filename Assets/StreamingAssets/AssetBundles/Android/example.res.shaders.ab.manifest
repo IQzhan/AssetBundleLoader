@@ -1,0 +1,18 @@
+ManifestFileVersion: 0
+CRC: 3119525176
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: e2e383b7f59c738cac035050673de50d
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 2d8266ee91e508711bb3ba38a43e1bba
+HashAppended: 0
+ClassTypes:
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 200
+  Script: {instanceID: 0}
+Assets:
+- Assets/Example/Res/Shaders/Scene01ShaderVariants.shadervariants
+Dependencies: []

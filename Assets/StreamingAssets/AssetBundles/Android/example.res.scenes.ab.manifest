@@ -1,0 +1,22 @@
+ManifestFileVersion: 0
+CRC: 2659697317
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: 705d084d3bffd9903b0d5b8bcf400f27
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 62b35af270115809747f89047f7ca34a
+HashAppended: 0
+ClassTypes:
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 104
+  Script: {instanceID: 0}
+- Class: 157
+  Script: {instanceID: 0}
+- Class: 196
+  Script: {instanceID: 0}
+Assets:
+- Assets/Example/Res/Scenes/Start.unity
+Dependencies: []

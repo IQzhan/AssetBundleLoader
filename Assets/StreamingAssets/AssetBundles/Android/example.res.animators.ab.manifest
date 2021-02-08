@@ -1,0 +1,16 @@
+ManifestFileVersion: 0
+CRC: 462182041
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: 40c866b10abf2c90763b502d1c159267
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: af57576da81d5d3ce45807ac11234de6
+HashAppended: 0
+ClassTypes:
+- Class: 74
+  Script: {instanceID: 0}
+Assets:
+- Assets/Example/Res/Animators/CameraMoveClip.anim
+Dependencies: []

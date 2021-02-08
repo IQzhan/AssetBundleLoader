@@ -1,0 +1,39 @@
+ManifestFileVersion: 0
+CRC: 232698162
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: example.res.animators.ab
+      Dependencies: {}
+    Info_1:
+      Name: example.res.ab
+      Dependencies: {}
+    Info_2:
+      Name: example.res.materials.ab
+      Dependencies: {}
+    Info_3:
+      Name: example.res.prefabs.ab
+      Dependencies:
+        Dependency_0: example.res.materials.ab
+    Info_4:
+      Name: example.res.scenes.scene01.scene01.ab
+      Dependencies: {}
+    Info_5:
+      Name: example.res.scenes.scene01.ab
+      Dependencies:
+        Dependency_0: example.res.animators.ab
+        Dependency_1: example.res.prefabs.ab
+        Dependency_2: example.res.scenes.scene01.scene01.ab
+        Dependency_3: example.res.scenes.scene01.settings.ab
+    Info_6:
+      Name: example.res.scenes.scene01.settings.ab
+      Dependencies: {}
+    Info_7:
+      Name: example.res.scenes.ab
+      Dependencies: {}
+    Info_8:
+      Name: example.res.shaders.ab
+      Dependencies: {}
+    Info_9:
+      Name: example.res.textures.ab
+      Dependencies: {}
